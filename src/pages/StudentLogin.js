@@ -1,20 +1,43 @@
-// pages/StudentLogin.js
-import { useNavigate } from "react-router-dom";
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 
-export default function StudentLogin() {
-  const navigate = useNavigate();
+const StudentLogin = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
-  const handleNavigate = () => {
-    navigate("/notifications");
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    alert(`Logging in with Email: ${email} and Password: ${password}`);
   };
 
   return (
-    <div>
-      <h1>Student Login</h1>
-      <p>This page is a placeholder.</p>
-      <button onClick={handleNavigate}>
-        Go to Notifications
-      </button>
+    <div style={{ textAlign: 'center' }}>
+      <h2>Student Login</h2>
+      <form onSubmit={handleSubmit}>
+        <div style={{ margin: '10px 0' }}>
+          <label htmlFor="email" style={{ marginRight: '10px' }}>Email:</label>
+          <input
+            type="email"
+            id="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)} 
+            required
+          />
+        </div>
+        <div style={{ margin: '10px 0' }}>
+          <label htmlFor="password" style={{ marginRight: '10px' }}>Password:</label>
+          <input
+            type="password"
+            id="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)} 
+            required
+          />
+        </div>
+        <button type="submit">Login</button>
+      </form>
     </div>
   );
-}
+};
+
+export default StudentLogin;
