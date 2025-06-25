@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
-const MainLogin = () => {
+const ClubLogin = () => {
   const [clubEmail, setClubEmail] = useState('');
   const [password, setPassword] = useState('');
+  const navigate = useNavigate();
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -40,15 +41,9 @@ const MainLogin = () => {
       {/* This section adds a link to a future sign-up page */}
       <hr style={{margin: '20px auto', width: '50%'}}/>
       <p>Don't have an account for your club yet?</p>
-      {/* This link doesn't go anywhere yet because we haven't created 
-        the Club Sign Up page or its route, but we're setting it up now.
-      */}
-      <Link to="/club-signup">
-          <button>Register New Club</button>
-      </Link>
-
+      <button onClick={() => navigate('/club-signup')}>Register New Club</button>
     </div>
   );
 };
 
-export default MainLogin;
+export default ClubLogin;

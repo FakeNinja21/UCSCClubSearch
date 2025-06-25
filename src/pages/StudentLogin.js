@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 const StudentLogin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const navigate = useNavigate();
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -36,6 +37,9 @@ const StudentLogin = () => {
         </div>
         <button type="submit">Login</button>
       </form>
+      <button style={{ marginTop: '20px' }} onClick={() => navigate('/student-signup')}>
+        Go to Student Sign Up
+      </button>
     </div>
   );
 };

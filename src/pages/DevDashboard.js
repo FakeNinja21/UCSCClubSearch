@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 const DevDashboard = () => {
   const linkStyle = {
@@ -7,6 +7,7 @@ const DevDashboard = () => {
     margin: '10px 0',
     fontSize: '18px',
   };
+  const navigate = useNavigate();
 
   return (
     <div style={{ padding: '20px' }}>
@@ -15,13 +16,14 @@ const DevDashboard = () => {
       <hr />
 
       <nav>
-        <Link style={linkStyle} to="/landing">➡️ Go to the Real Landing Page</Link>
-        <Link style={linkStyle} to="/student-login">➡️ Student Login Page</Link>
-        <Link style={linkStyle} to="/main-login">➡️ Club Login Page</Link>
-        <Link style={linkStyle} to="/club-signup">➡️ Club Sign Up Page</Link>
-        <Link style={linkStyle} to="/browse-clubs">➡️ Browse Clubs Page</Link>
-        <Link style={linkStyle} to="/calendar">➡️ Calendar Page</Link>
-        <Link style={linkStyle} to="/notifications">➡️ Notifications Page</Link>
+        <button style={linkStyle} onClick={() => navigate('/landing')}>➡️ Go to the Real Landing Page</button>
+        <button style={linkStyle} onClick={() => navigate('/student-login')}>➡️ Student Login Page</button>
+        <button style={linkStyle} onClick={() => navigate('/student-signup')}>➡️ Student Sign Up Page</button>
+        <button style={linkStyle} onClick={() => navigate('/main-login')}>➡️ Club Login Page</button>
+        <button style={linkStyle} onClick={() => navigate('/club-signup')}>➡️ Club Sign Up Page</button>
+        <button style={linkStyle} onClick={() => navigate('/browse-clubs')}>➡️ Browse Clubs Page</button>
+        <button style={linkStyle} onClick={() => navigate('/calendar')}>➡️ Calendar Page</button>
+        <button style={linkStyle} onClick={() => navigate('/notifications')}>➡️ Notifications Page</button>
       </nav>
     </div>
   );

@@ -1,18 +1,19 @@
 // components/StudentNavigation.js
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 export default function StudentNavigation() {
+  const navigate = useNavigate();
   return (
     <nav>
       <div style={{ marginBottom: '10px' }}>
         <b style={{ fontSize: '1.2em' }}>Club Connect</b>
       </div>
       <div>
-        <Link to="/notifications">Notifications</Link>
+        <button onClick={() => navigate('/notifications')}>Notifications</button>
         &nbsp;&nbsp;|&nbsp;&nbsp;
-        <Link to="/clubs">Club Search</Link>
+        <button onClick={() => navigate('/clubs')}>Club Search</button>
         &nbsp;&nbsp;|&nbsp;&nbsp;
-        <Link to="/calendar">Calendar</Link>
+        <button onClick={() => navigate('/calendar')}>Calendar</button>
       </div>
     </nav>
   );
