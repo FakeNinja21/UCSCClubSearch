@@ -1,49 +1,145 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from "react";
+import {
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
+} from "firebase/auth";
+import { useNavigate } from "react-router-dom";
+import { auth } from "../firebase";
+import clubLogo from "../assets/club_logo.png";
 
-const ClubLogin = () => {
-  const [clubEmail, setClubEmail] = useState('');
-  const [password, setPassword] = useState('');
+const provider = new GoogleAuthProvider();
+
+export default function ClubLogin() {
   const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
 
-  const handleSubmit = (event) => {
-    event.preventDefault();
-    alert(`Logging in Club with Email: ${clubEmail} and Password: ${password}`);
+  const handleEmailLogin = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      navigate("/club-dashboard");
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      await signInWithPopup(auth, provider);
+      navigate("/club-dashboard");
+    } catch (err) {
+      setError("Google Login failed: " + err.message);
+    }
   };
 
   return (
-    <div style={{ textAlign: 'center' }}>
-      <h2>Club Login</h2>
-      <form onSubmit={handleSubmit}>
-        <div style={{ margin: '10px 0' }}>
-          <label htmlFor="clubEmail" style={{ marginRight: '10px' }}>Club Email:</label>
+    <div style={styles.page}>
+      <div style={styles.card}>
+        <img src={clubLogo} alt="Club Logo" style={styles.logo} />
+        <h2>Club Login</h2>
+
+        <button onClick={handleGoogleLogin} style={styles.googleBtn}>
+          Log in with Google
+        </button>
+
+        <hr style={{ margin: "1rem 0" }} />
+
+        <form onSubmit={handleEmailLogin} style={styles.form}>
           <input
             type="email"
-            id="clubEmail"
-            value={clubEmail}
-            onChange={(e) => setClubEmail(e.target.value)}
+            placeholder="Club Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             required
+            style={styles.input}
           />
-        </div>
-        <div style={{ margin: '10px 0' }}>
-          <label htmlFor="password" style={{ marginRight: '10px' }}>Password:</label>
           <input
             type="password"
-            id="password"
+            placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            style={styles.input}
           />
-        </div>
-        <button type="submit">Login</button>
-      </form>
+          {error && <p style={{ color: "red" }}>{error}</p>}
+          <button type="submit" style={styles.primaryBtn}>
+            Log In
+          </button>
+        </form>
 
-      {/* This section adds a link to a future sign-up page */}
-      <hr style={{margin: '20px auto', width: '50%'}}/>
-      <p>Don't have an account for your club yet?</p>
-      <button onClick={() => navigate('/club-signup')}>Register New Club</button>
+        <button
+          type="button"
+          onClick={() => navigate("/club-signup")}
+          style={styles.linkBtn}
+        >
+          Don’t have an account? Sign up here
+        </button>
+      </div>
     </div>
   );
-};
+}
 
-export default ClubLogin;
+const styles = {
+  page: {
+    minHeight: "100vh",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f8f9fa",
+  },
+  card: {
+    width: "100%",
+    maxWidth: "400px",
+    background: "white",
+    padding: "2rem",
+    borderRadius: "8px",
+    boxShadow: "0 0 20px rgba(0,0,0,0.1)",
+    textAlign: "center",
+  },
+  logo: {
+    width: "120px",
+    marginBottom: "1rem",
+  },
+  googleBtn: {
+    backgroundColor: "#4285F4",
+    color: "white",
+    border: "none",
+    padding: "10px",
+    borderRadius: "4px",
+    width: "100%",
+    marginBottom: "1rem",
+    cursor: "pointer",
+  },
+  form: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "0.75rem",
+  },
+  input: {
+    padding: "10px",
+    borderRadius: "4px",
+    border: "1px solid #ccc",
+  },
+  primaryBtn: {
+    backgroundColor: "#007bff",
+    color: "white",
+    border: "none",
+    padding: "10px",
+    borderRadius: "4px",
+    cursor: "pointer",
+  },
+  linkBtn: {
+    background: "none",
+    border: "none",
+    color: "#007bff",
+    textDecoration: "underline",
+    cursor: "pointer",
+    marginTop: "10px",
+    fontSize: "14px",
+  },
+};

@@ -19,7 +19,7 @@ const DevDashboard = () => {
         <button style={linkStyle} onClick={() => navigate('/landing')}>➡️ Go to the Real Landing Page</button>
         <button style={linkStyle} onClick={() => navigate('/student-login')}>➡️ Student Login Page</button>
         <button style={linkStyle} onClick={() => navigate('/student-signup')}>➡️ Student Sign Up Page</button>
-        <button style={linkStyle} onClick={() => navigate('/main-login')}>➡️ Club Login Page</button>
+        <button style={linkStyle} onClick={() => navigate('/club-login')}>➡️ Club Login Page</button>
         <button style={linkStyle} onClick={() => navigate('/club-signup')}>➡️ Club Sign Up Page</button>
         <button style={linkStyle} onClick={() => navigate('/browse-clubs')}>➡️ Browse Clubs Page</button>
         <button style={linkStyle} onClick={() => navigate('/calendar')}>➡️ Calendar Page</button>

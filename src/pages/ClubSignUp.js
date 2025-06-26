@@ -1,73 +1,159 @@
-// src/pages/ClubSignUp.js
+import React, { useState } from "react";
+import {
+  createUserWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
+} from "firebase/auth";
+import { useNavigate } from "react-router-dom";
+import { auth } from "../firebase";
+import clubLogo from "../assets/club_logo.png";
 
-import React, { useState } from 'react';
+const provider = new GoogleAuthProvider();
 
-const ClubSignUp = () => {
-  // We need more state variables for a sign-up form
-  const [clubName, setClubName] = useState('');
-  const [clubEmail, setClubEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [clubDescription, setClubDescription] = useState('');
+export default function ClubSignUp() {
+  const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
 
-  const handleSubmit = (event) => {
-    event.preventDefault();
-    const clubData = {
-      name: clubName,
-      email: clubEmail,
-      description: clubDescription,
-      // NOTE: In a real app, you would securely hash the password on the backend
-    };
-    alert(`Creating new club with data: ${JSON.stringify(clubData, null, 2)}`);
+  const handleEmailSignUp = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    try {
+      await createUserWithEmailAndPassword(auth, email, password);
+      navigate("/club-dashboard");
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleGoogleSignUp = async () => {
+    try {
+      await signInWithPopup(auth, provider);
+      navigate("/club-dashboard");
+    } catch (err) {
+      setError("Google Sign-Up failed: " + err.message);
+    }
   };
 
   return (
-    <div style={{ textAlign: 'center' }}>
-      <h2>Register a New Club</h2>
-      <form onSubmit={handleSubmit}>
-        <div style={{ margin: '10px 0' }}>
-          <label htmlFor="clubName" style={{ marginRight: '10px', display: 'block' }}>Club Name:</label>
-          <input
-            type="text"
-            id="clubName"
-            value={clubName}
-            onChange={(e) => setClubName(e.target.value)}
-            required
-          />
-        </div>
-        <div style={{ margin: '10px 0' }}>
-          <label htmlFor="clubEmail" style={{ marginRight: '10px', display: 'block' }}>Contact Email:</label>
+    <div style={styles.page}>
+      <div style={styles.card}>
+        <img src={clubLogo} alt="Club Logo" style={styles.logo} />
+        <h2>Club Sign Up</h2>
+
+        <button onClick={handleGoogleSignUp} style={styles.googleBtn}>
+          Sign up with Google
+        </button>
+
+        <hr style={{ margin: "1rem 0" }} />
+
+        <form onSubmit={handleEmailSignUp} style={styles.form}>
           <input
             type="email"
-            id="clubEmail"
-            value={clubEmail}
-            onChange={(e) => setClubEmail(e.target.value)}
+            placeholder="Club Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             required
+            style={styles.input}
           />
-        </div>
-        <div style={{ margin: '10px 0' }}>
-          <label htmlFor="password" style={{ marginRight: '10px', display: 'block' }}>Password:</label>
           <input
             type="password"
-            id="password"
+            placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            style={styles.input}
           />
-        </div>
-        <div style={{ margin: '10px 0' }}>
-          <label htmlFor="clubDescription" style={{ marginRight: '10px', display: 'block' }}>Club Description:</label>
-          <textarea
-            id="clubDescription"
-            value={clubDescription}
-            onChange={(e) => setClubDescription(e.target.value)}
-            rows="4"
-            style={{width: '250px'}}
+          <input
+            type="password"
+            placeholder="Confirm Password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            style={styles.input}
           />
-        </div>
-        <button type="submit">Complete Registration</button>
-      </form>
+          {error && <p style={{ color: "red" }}>{error}</p>}
+          <button type="submit" style={styles.primaryBtn}>
+            Sign Up
+          </button>
+        </form>
+
+        <button
+          type="button"
+          onClick={() => navigate("/club-login")}
+          style={styles.linkBtn}
+        >
+          Already have an account? Log in here
+        </button>
+      </div>
     </div>
   );
-};
+}
 
-export default ClubSignUp;
+const styles = {
+  page: {
+    minHeight: "100vh",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f8f9fa",
+  },
+  card: {
+    width: "100%",
+    maxWidth: "400px",
+    background: "white",
+    padding: "2rem",
+    borderRadius: "8px",
+    boxShadow: "0 0 20px rgba(0,0,0,0.1)",
+    textAlign: "center",
+  },
+  logo: {
+    width: "120px",
+    marginBottom: "1rem",
+  },
+  googleBtn: {
+    backgroundColor: "#4285F4",
+    color: "white",
+    border: "none",
+    padding: "10px",
+    borderRadius: "4px",
+    width: "100%",
+    marginBottom: "1rem",
+    cursor: "pointer",
+  },
+  form: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "0.75rem",
+  },
+  input: {
+    padding: "10px",
+    borderRadius: "4px",
+    border: "1px solid #ccc",
+  },
+  primaryBtn: {
+    backgroundColor: "#007bff",
+    color: "white",
+    border: "none",
+    padding: "10px",
+    borderRadius: "4px",
+    cursor: "pointer",
+  },
+  linkBtn: {
+    background: "none",
+    border: "none",
+    color: "#007bff",
+    textDecoration: "underline",
+    cursor: "pointer",
+    marginTop: "10px",
+    fontSize: "14px",
+  },
+};
