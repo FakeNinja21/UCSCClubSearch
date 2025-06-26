@@ -7,6 +7,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { auth } from "../firebase";
 import clubLogo from "../assets/club_logo.png";
+import approvedClubEmails from "./approvedClubEmails"; // ✅ NEW LINE
 
 const provider = new GoogleAuthProvider();
 
@@ -17,12 +18,21 @@ export default function ClubSignUp() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
 
+  const isApprovedEmail = (email) => {
+    return approvedClubEmails.includes(email.toLowerCase());
+  };
+
   const handleEmailSignUp = async (e) => {
     e.preventDefault();
     setError("");
 
     if (password !== confirmPassword) {
       setError("Passwords do not match.");
+      return;
+    }
+
+    if (!isApprovedEmail(email)) {
+      setError("This email is not recognized as an official UCSC club.");
       return;
     }
 
@@ -36,7 +46,14 @@ export default function ClubSignUp() {
 
   const handleGoogleSignUp = async () => {
     try {
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      const userEmail = result.user.email;
+
+      if (!isApprovedEmail(userEmail)) {
+        setError("This Google account is not recognized as an official UCSC club.");
+        return;
+      }
+
       navigate("/club-dashboard");
     } catch (err) {
       setError("Google Sign-Up failed: " + err.message);
