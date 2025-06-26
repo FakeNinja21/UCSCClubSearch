@@ -1,8 +1,11 @@
 import React, { useState } from "react";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
-import { auth } from "../firebase";
+import { auth, db } from "../firebase";
+import { doc, setDoc, getDoc } from "firebase/firestore";
 import clubLogo from "../assets/club_logo.png";
+
+const provider = new GoogleAuthProvider();
 
 export default function StudentSignUp() {
   const navigate = useNavigate();
@@ -27,11 +30,39 @@ export default function StudentSignUp() {
     }
 
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
-      alert("Account created successfully!");
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      // Store user type in Firestore
+      await setDoc(doc(db, "users", userCredential.user.uid), {
+        email,
+        type: "student"
+      });
       navigate("/notifications");
     } catch (err) {
       setError(err.message);
+    }
+  };
+
+  const handleGoogleSignUp = async () => {
+    setError("");
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      if (!user.email.endsWith("@ucsc.edu")) {
+        setError("You must use a valid @ucsc.edu email to sign up.");
+        return;
+      }
+      // Check if user doc exists
+      const userDoc = doc(db, "users", user.uid);
+      const userSnap = await getDoc(userDoc);
+      if (!userSnap.exists()) {
+        await setDoc(userDoc, {
+          email: user.email,
+          type: "student"
+        });
+      }
+      navigate("/notifications");
+    } catch (err) {
+      setError("Google Sign Up failed: " + err.message);
     }
   };
 
@@ -40,6 +71,12 @@ export default function StudentSignUp() {
       <div style={styles.card}>
         <img src={clubLogo} alt="Club Logo" style={styles.logo} />
         <h2>Student Sign Up</h2>
+
+        <button onClick={handleGoogleSignUp} style={styles.googleBtn}>
+          Sign up with Google
+        </button>
+
+        <hr style={{ margin: "1rem 0" }} />
 
         <form onSubmit={handleSignUp} style={styles.form}>
           <input
@@ -104,6 +141,16 @@ const styles = {
   logo: {
     width: "120px",
     marginBottom: "1rem",
+  },
+  googleBtn: {
+    backgroundColor: "#4285F4",
+    color: "white",
+    border: "none",
+    padding: "10px",
+    borderRadius: "4px",
+    width: "100%",
+    marginBottom: "1rem",
+    cursor: "pointer",
   },
   form: {
     display: "flex",

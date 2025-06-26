@@ -5,7 +5,8 @@ import {
   GoogleAuthProvider,
 } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
-import { auth } from "../firebase";
+import { auth, db } from "../firebase";
+import { doc, getDoc } from "firebase/firestore";
 import clubLogo from "../assets/club_logo.png";
 
 const provider = new GoogleAuthProvider();
@@ -16,13 +17,39 @@ export default function ClubLogin() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
+  const handleRedirect = async (user) => {
+    try {
+      const userDoc = doc(db, "users", user.uid);
+      const userSnap = await getDoc(userDoc);
+      
+      if (userSnap.exists()) {
+        const userData = userSnap.data();
+        if (userData.type === "student") {
+          navigate("/notifications");
+        } else if (userData.type === "club") {
+          navigate("/club-dashboard");
+        } else {
+          // Fallback for unknown types
+          navigate("/notifications");
+        }
+      } else {
+        // No user document exists - this shouldn't happen for new sign-ups
+        // but could happen for older accounts
+        navigate("/notifications");
+      }
+    } catch (err) {
+      console.error("Error fetching user data:", err);
+      navigate("/notifications");
+    }
+  };
+
   const handleEmailLogin = async (e) => {
     e.preventDefault();
     setError("");
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      navigate("/club-dashboard");
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      await handleRedirect(userCredential.user);
     } catch (err) {
       setError(err.message);
     }
@@ -30,8 +57,8 @@ export default function ClubLogin() {
 
   const handleGoogleLogin = async () => {
     try {
-      await signInWithPopup(auth, provider);
-      navigate("/club-dashboard");
+      const result = await signInWithPopup(auth, provider);
+      await handleRedirect(result.user);
     } catch (err) {
       setError("Google Login failed: " + err.message);
     }
@@ -77,7 +104,7 @@ export default function ClubLogin() {
           onClick={() => navigate("/club-signup")}
           style={styles.linkBtn}
         >
-          Don’t have an account? Sign up here
+          Don't have an account? Sign up here
         </button>
       </div>
     </div>

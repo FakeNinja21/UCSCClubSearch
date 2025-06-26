@@ -175,7 +175,8 @@ const approvedClubEmails = [
   "wss.ucsc@gmail.com",
   "xhuo3@ucsc.edu",
   "xyuan42@ucsc.edu",
-  "zebraclub.ucsc@gmail.com"
+  "zebraclub.ucsc@gmail.com",
+  "mohitrsc507@gmail.com"
 ];
 
 export default approvedClubEmails;

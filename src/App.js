@@ -9,6 +9,7 @@ import NotificationsPage from './pages/NotificationsPage.js';
 import ClubSignUp from './pages/ClubSignUp.js';
 import DevDashboard from './pages/DevDashboard.js';
 import StudentSignUp from './pages/StudentSignUp.js';
+import ProfilePage from './pages/ProfilePage.js';
 
 const HomePage = () => {
   const navigate = useNavigate();
@@ -39,6 +40,7 @@ function App() {
         <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/club-signup" element={<ClubSignUp />} />
+        <Route path="/profile" element={<ProfilePage />} />
       </Routes>
     </div>
   );

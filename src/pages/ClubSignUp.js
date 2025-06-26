@@ -5,9 +5,10 @@ import {
   GoogleAuthProvider,
 } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
-import { auth } from "../firebase";
+import { auth, db } from "../firebase";
+import { doc, setDoc, getDoc } from "firebase/firestore";
 import clubLogo from "../assets/club_logo.png";
-import approvedClubEmails from "./approvedClubEmails"; // ✅ NEW LINE
+import approvedClubEmails from "./approvedClubEmails";
 
 const provider = new GoogleAuthProvider();
 
@@ -37,8 +38,13 @@ export default function ClubSignUp() {
     }
 
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
-      navigate("/club-dashboard");
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      // Store user type in Firestore
+      await setDoc(doc(db, "users", userCredential.user.uid), {
+        email,
+        type: "club"
+      });
+      navigate("/notifications");
     } catch (err) {
       setError(err.message);
     }
@@ -47,14 +53,25 @@ export default function ClubSignUp() {
   const handleGoogleSignUp = async () => {
     try {
       const result = await signInWithPopup(auth, provider);
-      const userEmail = result.user.email;
+      const user = result.user;
+      const userEmail = user.email;
 
       if (!isApprovedEmail(userEmail)) {
         setError("This Google account is not recognized as an official UCSC club.");
         return;
       }
 
-      navigate("/club-dashboard");
+      // Check if user doc exists
+      const userDoc = doc(db, "users", user.uid);
+      const userSnap = await getDoc(userDoc);
+      if (!userSnap.exists()) {
+        await setDoc(userDoc, {
+          email: user.email,
+          type: "club"
+        });
+      }
+
+      navigate("/notifications");
     } catch (err) {
       setError("Google Sign-Up failed: " + err.message);
     }
