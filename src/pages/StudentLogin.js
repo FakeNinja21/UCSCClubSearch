@@ -63,6 +63,16 @@ export default function StudentLogin() {
         setError("You must use a valid @ucsc.edu email to sign in.");
         return;
       }
+      // Check if user doc exists
+      const userDoc = doc(db, "users", user.uid);
+      const userSnap = await getDoc(userDoc);
+      if (!userSnap.exists()) {
+        // Delete the Auth user and sign out
+        await user.delete();
+        await auth.signOut();
+        setError("You must sign up before logging in with Google.");
+        return;
+      }
       await handleRedirect(user);
     } catch (err) {
       setError("Google Sign In failed: " + err.message);

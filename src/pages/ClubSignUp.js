@@ -27,20 +27,23 @@ export default function ClubSignUp() {
     e.preventDefault();
     setError("");
 
-    if (password !== confirmPassword) {
-      setError("Passwords do not match.");
-      return;
-    }
-
-    if (!isApprovedEmail(email)) {
-      setError("This email is not recognized as an official UCSC club.");
-      return;
-    }
-
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      if (password !== confirmPassword) {
+        await user.delete();
+        await auth.signOut();
+        setError("Passwords do not match.");
+        return;
+      }
+      if (!isApprovedEmail(email)) {
+        await user.delete();
+        await auth.signOut();
+        setError("This email is not recognized as an official UCSC club.");
+        return;
+      }
       // Store user type in Firestore
-      await setDoc(doc(db, "users", userCredential.user.uid), {
+      await setDoc(doc(db, "users", user.uid), {
         email,
         type: "club"
       });
@@ -57,6 +60,8 @@ export default function ClubSignUp() {
       const userEmail = user.email;
 
       if (!isApprovedEmail(userEmail)) {
+        await user.delete();
+        await auth.signOut();
         setError("This Google account is not recognized as an official UCSC club.");
         return;
       }

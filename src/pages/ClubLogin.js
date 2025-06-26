@@ -58,7 +58,18 @@ export default function ClubLogin() {
   const handleGoogleLogin = async () => {
     try {
       const result = await signInWithPopup(auth, provider);
-      await handleRedirect(result.user);
+      const user = result.user;
+      // Check if user doc exists
+      const userDoc = doc(db, "users", user.uid);
+      const userSnap = await getDoc(userDoc);
+      if (!userSnap.exists()) {
+        // Delete the Auth user and sign out
+        await user.delete();
+        await auth.signOut();
+        setError("You must sign up before logging in with Google.");
+        return;
+      }
+      await handleRedirect(user);
     } catch (err) {
       setError("Google Login failed: " + err.message);
     }

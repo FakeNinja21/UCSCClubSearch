@@ -19,20 +19,23 @@ export default function StudentSignUp() {
     e.preventDefault();
     setError("");
 
-    if (!email.endsWith("@ucsc.edu")) {
-      setError("You must use a valid @ucsc.edu email to sign up.");
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError("Passwords do not match.");
-      return;
-    }
-
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      if (!email.endsWith("@ucsc.edu")) {
+        await user.delete();
+        await auth.signOut();
+        setError("You must use a valid @ucsc.edu email to sign up.");
+        return;
+      }
+      if (password !== confirmPassword) {
+        await user.delete();
+        await auth.signOut();
+        setError("Passwords do not match.");
+        return;
+      }
       // Store user type in Firestore
-      await setDoc(doc(db, "users", userCredential.user.uid), {
+      await setDoc(doc(db, "users", user.uid), {
         email,
         type: "student"
       });
@@ -48,6 +51,8 @@ export default function StudentSignUp() {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
       if (!user.email.endsWith("@ucsc.edu")) {
+        await user.delete();
+        await auth.signOut();
         setError("You must use a valid @ucsc.edu email to sign up.");
         return;
       }
