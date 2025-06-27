@@ -8,7 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { auth, db } from "../firebase";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import clubLogo from "../assets/club_logo.png";
-import approvedClubEmails from "./approvedClubEmails";
+import approvedClubEmails from "../data/approvedClubEmails";
 
 const provider = new GoogleAuthProvider();
 
