@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { auth, db } from "../firebase"; // <-- use db instead of firestore
+import { auth, db } from "../firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import NavBar from "../components/StudentNavigation";
 import availableTags from "../data/availableTags";
@@ -56,20 +56,20 @@ function ProfilePage() {
   const [userData, setUserData] = useState(null);
   const [major, setMajor] = useState("");
   const [editingMajor, setEditingMajor] = useState(false);
-  const [selectedTag, setSelectedTag] = useState("");
-  const [tags, setTags] = useState([]);
+  const [selectedInterest, setSelectedInterest] = useState("");
+  const [interests, setInterests] = useState([]);
 
   useEffect(() => {
     const fetchUserData = async () => {
       const user = auth.currentUser;
       if (user) {
-        const userRef = doc(db, "users", user.uid); // use db
+        const userRef = doc(db, "users", user.uid);
         const userSnap = await getDoc(userRef);
         if (userSnap.exists()) {
           const data = userSnap.data();
           setUserData(data);
           setMajor(data.major || "");
-          setTags(data.tags || []);
+          setInterests(data.tags || []); // using `tags` key for compatibility
         }
       }
     };
@@ -80,32 +80,32 @@ function ProfilePage() {
   const handleMajorSave = async () => {
     const user = auth.currentUser;
     if (user) {
-      const userRef = doc(db, "users", user.uid); // use db
+      const userRef = doc(db, "users", user.uid);
       await updateDoc(userRef, { major });
       setEditingMajor(false);
     }
   };
 
-  const handleRemoveTag = async (tagToRemove) => {
-    const updatedTags = tags.filter((tag) => tag !== tagToRemove);
-    setTags(updatedTags);
+  const handleRemoveInterest = async (interestToRemove) => {
+    const updated = interests.filter((tag) => tag !== interestToRemove);
+    setInterests(updated);
 
     const user = auth.currentUser;
     if (user) {
-      const userRef = doc(db, "users", user.uid); // use db
-      await updateDoc(userRef, { tags: updatedTags });
+      const userRef = doc(db, "users", user.uid);
+      await updateDoc(userRef, { tags: updated }); // still updating `tags` in Firestore
     }
   };
 
-  const handleAddTag = async () => {
-    if (!selectedTag || tags.includes(selectedTag)) return;
-    const updatedTags = [...tags, selectedTag];
-    setTags(updatedTags);
+  const handleAddInterest = async () => {
+    if (!selectedInterest || interests.includes(selectedInterest)) return;
+    const updated = [...interests, selectedInterest];
+    setInterests(updated);
 
     const user = auth.currentUser;
     if (user) {
-      const userRef = doc(db, "users", user.uid); // use db
-      await updateDoc(userRef, { tags: updatedTags });
+      const userRef = doc(db, "users", user.uid);
+      await updateDoc(userRef, { tags: updated });
     }
   };
 
@@ -146,7 +146,10 @@ function ProfilePage() {
           ) : (
             <>
               {major}{" "}
-              <button onClick={() => setEditingMajor(true)} style={styles.editBtn}>
+              <button
+                onClick={() => setEditingMajor(true)}
+                style={styles.editBtn}
+              >
                 ✏️ Edit
               </button>
             </>
@@ -156,12 +159,12 @@ function ProfilePage() {
         <div style={styles.section}>
           <span style={styles.label}>Topics of Interest:</span>
           <div>
-            {tags.map((tag, idx) => (
+            {interests.map((tag, idx) => (
               <span key={idx} style={styles.tag}>
                 {tag}
                 <span
                   style={styles.tagRemove}
-                  onClick={() => handleRemoveTag(tag)}
+                  onClick={() => handleRemoveInterest(tag)}
                 >
                   ✖
                 </span>
@@ -170,19 +173,19 @@ function ProfilePage() {
           </div>
           <div style={styles.addTagSection}>
             <select
-              value={selectedTag}
-              onChange={(e) => setSelectedTag(e.target.value)}
+              value={selectedInterest}
+              onChange={(e) => setSelectedInterest(e.target.value)}
             >
               <option value="">Select a topic to add</option>
               {availableTags
-                .filter((tag) => !tags.includes(tag))
+                .filter((tag) => !interests.includes(tag))
                 .map((tag, idx) => (
                   <option key={idx} value={tag}>
                     {tag}
                   </option>
                 ))}
             </select>
-            <button onClick={handleAddTag} style={styles.editBtn}>
+            <button onClick={handleAddInterest} style={styles.editBtn}>
               + Add Tag
             </button>
           </div>
