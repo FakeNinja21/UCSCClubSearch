@@ -6,7 +6,7 @@ import {
 } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import { auth, db } from "../firebase";
-import { doc, setDoc, getDoc } from "firebase/firestore";
+import { doc, setDoc } from "firebase/firestore";
 import clubLogo from "../assets/club_logo.png";
 import approvedClubEmails from "../data/approvedClubEmails";
 
@@ -27,33 +27,35 @@ export default function ClubSignUp() {
     e.preventDefault();
     setError("");
 
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-      if (password !== confirmPassword) {
-        await user.delete();
-        await auth.signOut();
-        setError("Passwords do not match.");
-        return;
-      }
+
       if (!isApprovedEmail(email)) {
         await user.delete();
         await auth.signOut();
         setError("This email is not recognized as an official UCSC club.");
         return;
       }
-      // Store user type in Firestore
-      await setDoc(doc(db, "users", user.uid), {
+
+      await setDoc(doc(db, "clubs", user.uid), {
         email,
         type: "club"
       });
-      navigate("/notifications");
+
+      navigate("/club-profile");
     } catch (err) {
       setError(err.message);
     }
   };
 
   const handleGoogleSignUp = async () => {
+    setError("");
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
@@ -66,17 +68,12 @@ export default function ClubSignUp() {
         return;
       }
 
-      // Check if user doc exists
-      const userDoc = doc(db, "users", user.uid);
-      const userSnap = await getDoc(userDoc);
-      if (!userSnap.exists()) {
-        await setDoc(userDoc, {
-          email: user.email,
-          type: "club"
-        });
-      }
+      await setDoc(doc(db, "clubs", user.uid), {
+        email: userEmail,
+        type: "club"
+      });
 
-      navigate("/notifications");
+      navigate("/club-profile");
     } catch (err) {
       setError("Google Sign-Up failed: " + err.message);
     }
@@ -121,7 +118,7 @@ export default function ClubSignUp() {
           />
           {error && <p style={{ color: "red" }}>{error}</p>}
           <button type="submit" style={styles.primaryBtn}>
-            Sign Up
+            Create Account
           </button>
         </form>
 

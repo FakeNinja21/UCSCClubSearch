@@ -19,26 +19,16 @@ export default function ClubLogin() {
 
   const handleRedirect = async (user) => {
     try {
-      const userDoc = doc(db, "users", user.uid);
-      const userSnap = await getDoc(userDoc);
-      
-      if (userSnap.exists()) {
-        const userData = userSnap.data();
-        if (userData.type === "student") {
-          navigate("/notifications");
-        } else if (userData.type === "club") {
-          navigate("/club-dashboard");
-        } else {
-          // Fallback for unknown types
-          navigate("/notifications");
-        }
+      const clubDoc = doc(db, "clubs", user.uid);
+      const clubSnap = await getDoc(clubDoc);
+
+      if (clubSnap.exists()) {
+        navigate("/club-profile");
       } else {
-        // No user document exists - this shouldn't happen for new sign-ups
-        // but could happen for older accounts
-        navigate("/notifications");
+        navigate("/notifications"); // fallback in case data is missing
       }
     } catch (err) {
-      console.error("Error fetching user data:", err);
+      console.error("Error checking user type:", err);
       navigate("/notifications");
     }
   };
@@ -59,16 +49,16 @@ export default function ClubLogin() {
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
-      // Check if user doc exists
-      const userDoc = doc(db, "users", user.uid);
+
+      const userDoc = doc(db, "clubs", user.uid);
       const userSnap = await getDoc(userDoc);
       if (!userSnap.exists()) {
-        // Delete the Auth user and sign out
         await user.delete();
         await auth.signOut();
         setError("You must sign up before logging in with Google.");
         return;
       }
+
       await handleRedirect(user);
     } catch (err) {
       setError("Google Login failed: " + err.message);
