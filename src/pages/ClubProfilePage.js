@@ -24,8 +24,13 @@ const ClubProfilePage = () => {
         const docRef = doc(db, 'clubs', currentUser.uid);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
-          setClubData(docSnap.data());
-          setImages(docSnap.data().imageUrls || []);
+          const data = docSnap.data();
+          setClubData({
+            ...data,
+            tags: data.tags || [],
+            imageUrls: data.imageUrls || [],
+          });
+          setImages(data.imageUrls || []);
         }
       }
     };
