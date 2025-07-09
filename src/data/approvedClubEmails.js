@@ -1,5 +1,5 @@
 const approvedClubEmails = [
-  "rrrr@ucsc.edu",
+  "rrrrr@ucsc.edu",
   "rrr@ucsc.edu",
   "Btheunis@ucsc.edu",
   "ProjectSmileUCSC@gmail.com",

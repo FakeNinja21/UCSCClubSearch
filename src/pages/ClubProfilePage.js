@@ -10,6 +10,7 @@ const ClubProfilePage = () => {
   const [clubData, setClubData] = useState({
     name: '',
     email: '',
+    instagram: '',
     description: '',
     tags: [],
     imageUrls: [],
@@ -25,13 +26,13 @@ const ClubProfilePage = () => {
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const data = docSnap.data();
-          // Ensure all fields have a default value to prevent errors
           setClubData({
             name: data.name || '',
             email: data.email || '',
+            instagram: data.instagram || '',
             description: data.description || '',
-            tags: data.tags || [], // <-- FIX IS HERE
-            imageUrls: data.imageUrls || [], // <-- FIX IS HERE
+            tags: data.tags || [],
+            imageUrls: data.imageUrls || [],
           });
           setImages(data.imageUrls || []);
         }
@@ -57,14 +58,17 @@ const ClubProfilePage = () => {
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files);
     const urls = files.map(file => URL.createObjectURL(file));
-    setImages([...images, ...urls]);
-    setClubData({ ...clubData, imageUrls: [...images, ...urls] });
+    const updatedImages = [...images, ...urls];
+    setImages(updatedImages);
+    setClubData({ ...clubData, imageUrls: updatedImages });
   };
 
   const saveChanges = async () => {
     if (currentUser) {
       const docRef = doc(db, 'clubs', currentUser.uid);
-      await setDoc(docRef, { ...clubData, ownerEmail: currentUser.email });
+      await setDoc(docRef, {
+        ...clubData
+      });
       alert('Changes saved!');
     }
   };
@@ -79,15 +83,29 @@ const ClubProfilePage = () => {
         <label>Upload Images</label>
         <input type="file" multiple onChange={handleImageUpload} />
         <div style={imageContainerStyle}>
-          {images.map((url, index) => <img key={index} src={url} alt={`preview-${index}`} style={imageStyle} />)}
+          {(images || []).map((url, index) => <img key={index} src={url} alt={`preview-${index}`} style={imageStyle} />)}
         </div>
         <label>Club Email</label>
-        <input name="email" value={clubData.email} onChange={handleChange} style={inputStyle} />
+        <input
+          name="email"
+          value={clubData.email}
+          onChange={handleChange}
+          style={inputStyle}
+        />
+
+        <label>Instagram</label>
+        <input
+          name="instagram"
+          value={clubData.instagram}
+          onChange={handleChange}
+          style={inputStyle}
+        />
+
         <label>Description</label>
         <textarea name="description" value={clubData.description} rows="4" style={inputStyle} onChange={handleChange} />
         <label>Tags / Topics</label>
         <div style={tagContainerStyle}>
-          {clubData.tags.map((tag, index) => (
+          {(clubData.tags || []).map((tag, index) => (
             <div key={index} style={tagStyle}>
               {tag}
               <button onClick={() => removeTag(tag)} style={tagButtonStyle}>×</button>
