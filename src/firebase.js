@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, collection, addDoc, serverTimestamp, getDocs, query, orderBy } from "firebase/firestore";
 
 const firebaseConfig = {
  apiKey: "AIzaSyA93vMywvtMarjNvTwfGbXszIpBZbkvxsU",
@@ -15,4 +15,31 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-export { auth, db };
+// Function to create a new event post in the 'events' collection
+const createEvent = async (eventData) => {
+  try {
+    await addDoc(collection(db, "events"), {
+      ...eventData,
+      createdAt: serverTimestamp(), // Automatically adds the creation time
+    });
+    console.log("Event created successfully!");
+  } catch (error) {
+    console.error("Error creating event: ", error);
+    throw error; // Pass the error along to be handled by the form
+  }
+};
+
+// Function to get all events, ordered by creation date
+const getEvents = async () => {
+  const eventsCollection = collection(db, "events");
+  // Create a query to order events by the 'createdAt' field, newest first
+  const q = query(eventsCollection, orderBy("createdAt", "desc"));
+  const eventSnapshot = await getDocs(q);
+  // Map over the documents and format them into a more usable array
+  const eventList = eventSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  return eventList;
+};
+
+
+// All functions are now exported together here
+export { auth, db, createEvent, getEvents };

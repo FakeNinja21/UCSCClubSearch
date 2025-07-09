@@ -11,6 +11,7 @@ import DevDashboard from './pages/DevDashboard.js';
 import StudentSignUp from './pages/StudentSignUp.js';
 import ProfilePage from './pages/ProfilePage.js';
 import ClubProfilePage from "./pages/ClubProfilePage.js";
+import CreateEventPage from './pages/CreateEventPage.js';
 
 const HomePage = () => {
   const navigate = useNavigate();
@@ -44,6 +45,7 @@ function App() {
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/club-profile" element={<ClubProfilePage />} />
         <Route path="/club/:clubId" element={<ClubProfilePage />} />
+        <Route path="/create-event" element={<CreateEventPage />} />
       </Routes>
     </div>
   );
