@@ -58,23 +58,50 @@ function ProfilePage() {
   const [editingMajor, setEditingMajor] = useState(false);
   const [selectedInterest, setSelectedInterest] = useState("");
   const [interests, setInterests] = useState([]);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let didCancel = false;
     const fetchUserData = async () => {
-      const user = auth.currentUser;
-      if (user) {
+      try {
+        const user = auth.currentUser;
+        if (!user) {
+          setError("You must be logged in to view your profile.");
+          setLoading(false);
+          return;
+        }
         const userRef = doc(db, "users", user.uid);
         const userSnap = await getDoc(userRef);
         if (userSnap.exists()) {
           const data = userSnap.data();
-          setUserData(data);
-          setMajor(data.major || "");
-          setInterests(data.tags || []); // using `tags` key for compatibility
+          if (!didCancel) {
+            setUserData(data);
+            setMajor(data.major || "");
+            setInterests(data.tags || []);
+            setLoading(false);
+          }
+        } else {
+          setError("User profile not found.");
+          setLoading(false);
         }
+      } catch (err) {
+        setError("Failed to load profile. Please try again later.");
+        setLoading(false);
       }
     };
-
     fetchUserData();
+    // Timeout fallback
+    const timeout = setTimeout(() => {
+      if (loading && !userData) {
+        setError("Profile loading timed out. Please refresh the page.");
+        setLoading(false);
+      }
+    }, 8000);
+    return () => {
+      didCancel = true;
+      clearTimeout(timeout);
+    };
   }, []);
 
   const handleMajorSave = async () => {
@@ -109,7 +136,9 @@ function ProfilePage() {
     }
   };
 
-  if (!userData) return <div>Loading...</div>;
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div style={{ color: 'red', padding: '2rem', textAlign: 'center' }}>{error}</div>;
+  if (!userData) return null;
 
   return (
     <>
@@ -160,13 +189,22 @@ function ProfilePage() {
           <span style={styles.label}>Topics of Interest:</span>
           <div>
             {interests.map((tag, idx) => (
-              <span key={idx} style={styles.tag}>
+              <span key={idx} style={{ ...styles.tag, position: 'relative' }}>
                 {tag}
                 <span
-                  style={styles.tagRemove}
+                  style={{
+                    marginLeft: '0.4rem',
+                    cursor: 'pointer',
+                    color: '#003B5C',
+                    fontWeight: 'bold',
+                    fontSize: 15,
+                    opacity: 0,
+                    transition: 'opacity 0.2s',
+                  }}
+                  className="tag-remove-btn"
                   onClick={() => handleRemoveInterest(tag)}
                 >
-                  ✖
+                  ×
                 </span>
               </span>
             ))}
@@ -196,3 +234,20 @@ function ProfilePage() {
 }
 
 export default ProfilePage;
+
+if (typeof document !== 'undefined') {
+  const style = document.createElement('style');
+  style.innerHTML = `
+    .tag-remove-btn:hover, .tag-remove-btn:focus {
+      opacity: 1 !important;
+    }
+    .tag-remove-btn {
+      opacity: 0;
+      pointer-events: auto;
+    }
+    span[style*='relative']:hover .tag-remove-btn {
+      opacity: 1 !important;
+    }
+  `;
+  document.head.appendChild(style);
+}
