@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import StudentNavigation from '../components/StudentNavigation';
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '../firebase';
+import { collection, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { auth, db } from '../firebase';
 import availableTags from '../data/availableTags';
 
 function BrowseClubs() {
@@ -11,6 +11,7 @@ function BrowseClubs() {
   const [carouselIdx, setCarouselIdx] = useState({});
   const [search, setSearch] = useState('');
   const [selectedTags, setSelectedTags] = useState([]);
+  const [joinedClubs, setJoinedClubs] = useState([]);
 
   // Pastel color palette for tags
   const pastelColors = [
@@ -35,6 +36,22 @@ function BrowseClubs() {
     fetchClubs();
   }, []);
 
+  useEffect(() => {
+    // Fetch joined clubs for the current student
+    const fetchJoinedClubs = async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+      const userRef = doc(db, 'users', user.uid);
+      const userSnap = await getDoc(userRef);
+      if (userSnap.exists()) {
+        const data = userSnap.data();
+        // joined clubs are tags like 'joined:ClubName'
+        setJoinedClubs(Array.isArray(data.joinedClubs) ? data.joinedClubs : []);
+      }
+    };
+    fetchJoinedClubs();
+  }, []);
+
   const filteredClubs = clubs.filter(club => {
     const matchesSearch = club.name?.toLowerCase().includes(search.toLowerCase()) ||
       club.description?.toLowerCase().includes(search.toLowerCase());
@@ -51,6 +68,23 @@ function BrowseClubs() {
     if (!selectedTags.includes(tag)) setSelectedTags([...selectedTags, tag]);
   };
   const handleRemoveTag = (tag) => setSelectedTags(selectedTags.filter(t => t !== tag));
+
+  const handleJoinClub = async (clubName) => {
+    const user = auth.currentUser;
+    if (!user) return;
+    const userRef = doc(db, 'users', user.uid);
+    const userSnap = await getDoc(userRef);
+    let joined = [];
+    if (userSnap.exists()) {
+      const data = userSnap.data();
+      joined = Array.isArray(data.joinedClubs) ? data.joinedClubs : [];
+    }
+    if (!joined.includes(clubName)) {
+      const updated = [...joined, clubName];
+      await updateDoc(userRef, { joinedClubs: updated });
+      setJoinedClubs(updated);
+    }
+  };
 
   return (
     <div style={{ background: '#f7f7fa', minHeight: '100vh', fontFamily: 'Inter, Arial, sans-serif' }}>
@@ -156,6 +190,27 @@ function BrowseClubs() {
                       <div><b>Instagram:</b> {club.instagram}</div>
                     </div>
                   )}
+                  {/* Join Club Button */}
+                  <button
+                    onClick={() => handleJoinClub(club.name)}
+                    disabled={joinedClubs.includes(club.name)}
+                    style={{
+                      marginTop: 18,
+                      width: '100%',
+                      background: joinedClubs.includes(club.name) ? '#e5f0ff' : '#003B5C',
+                      color: joinedClubs.includes(club.name) ? '#003B5C' : '#FFD700',
+                      border: 'none',
+                      borderRadius: 8,
+                      padding: '12px 0',
+                      fontSize: 16,
+                      fontWeight: 700,
+                      cursor: joinedClubs.includes(club.name) ? 'not-allowed' : 'pointer',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                      transition: 'background 0.2s, color 0.2s',
+                    }}
+                  >
+                    {joinedClubs.includes(club.name) ? 'Joined' : 'Join Club'}
+                  </button>
                 </div>
               );
             })}

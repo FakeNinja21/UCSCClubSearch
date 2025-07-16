@@ -1,6 +1,7 @@
 const approvedClubEmails = [
   "rrrrr@ucsc.edu",
   "rrr@ucsc.edu",
+  "rar@ucsc.edu",
   "Btheunis@ucsc.edu",
   "ProjectSmileUCSC@gmail.com",
   "Shuai.Wang@chineseunion.org",

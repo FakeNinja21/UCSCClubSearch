@@ -4,7 +4,7 @@ import StudentNavigation from "../components/StudentNavigation";
 import { getEvents } from '../firebase'; // ⬇️ ADDED import for our getEvents function
 import availableTags from '../data/availableTags';
 import { auth, db } from '../firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 
 export default function NotificationsPage() {
   // ⬇️ ADDED state to hold events, loading status, and errors
@@ -13,6 +13,7 @@ export default function NotificationsPage() {
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('all');
   const [userTags, setUserTags] = useState([]);
+  const [clubs, setClubs] = useState([]);
 
   // ⬇️ ADDED useEffect to fetch data when the component loads
   useEffect(() => {
@@ -32,9 +33,9 @@ export default function NotificationsPage() {
     fetchEvents();
   }, []); // The empty [] means this runs only once
 
-  // Fetch user tags on mount
+  // Fetch user tags and all clubs on mount
   useEffect(() => {
-    const fetchUserTags = async () => {
+    const fetchUserTagsAndClubs = async () => {
       const user = auth.currentUser;
       if (user) {
         const userRef = doc(db, 'users', user.uid);
@@ -44,15 +45,27 @@ export default function NotificationsPage() {
           setUserTags(Array.isArray(data.tags) ? data.tags.filter(tag => availableTags.includes(tag)) : []);
         }
       }
+      // Fetch all clubs and their tags
+      const clubsSnapshot = await getDocs(collection(db, 'clubs'));
+      setClubs(clubsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     };
-    fetchUserTags();
+    fetchUserTagsAndClubs();
   }, []);
 
   const filteredEvents = filter === 'all'
     ? events
-    : events.filter(event =>
-        Array.isArray(event.tags) && event.tags.some(tag => userTags.includes(tag))
-      );
+    : events.filter(event => {
+        let club = null;
+        if (event.clubId) {
+          club = clubs.find(c => c.id === event.clubId);
+        }
+        if (!club && event.clubName) {
+          club = clubs.find(c => c.name === event.clubName);
+        }
+        const clubTags = Array.isArray(club?.tags) ? club.tags : [];
+        const userTagList = Array.isArray(userTags) ? userTags : [];
+        return clubTags.some(tag => userTagList.includes(tag));
+      });
 
   const renderEvents = () => {
     if (loading) {
@@ -171,9 +184,6 @@ export default function NotificationsPage() {
         </div>
         {renderEvents()}
       </div>
-      <footer style={{ textAlign: 'center', color: '#888', fontSize: 15, marginTop: 60, padding: 24 }}>
-        &copy; {new Date().getFullYear()} UCSC Club Connect
-      </footer>
     </div>
   );
 }

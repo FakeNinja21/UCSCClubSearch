@@ -104,7 +104,7 @@ const CreateEventPage = () => {
     setStep(1);
   };
 
-  // Cloudinary upload helper
+  // Cloudinary
   const uploadToCloudinary = async (file) => {
     const url = 'https://api.cloudinary.com/v1_1/dwo1u3dhn/image/upload';
     const formData = new FormData();

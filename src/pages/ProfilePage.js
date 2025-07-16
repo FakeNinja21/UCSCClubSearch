@@ -3,6 +3,8 @@ import { auth, db } from "../firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import NavBar from "../components/StudentNavigation";
 import availableTags from "../data/availableTags";
+import { onAuthStateChanged } from "firebase/auth";
+import { useRef } from "react";
 
 const styles = {
   container: {
@@ -60,47 +62,64 @@ function ProfilePage() {
   const [interests, setInterests] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [authChecked, setAuthChecked] = useState(false);
+  const isMounted = useRef(true);
+  const [joinedClubs, setJoinedClubs] = useState([]);
 
   useEffect(() => {
+    isMounted.current = true;
     let didCancel = false;
-    const fetchUserData = async () => {
-      try {
-        const user = auth.currentUser;
-        if (!user) {
+    let retries = 0;
+    const maxRetries = 2;
+    let unsubscribe;
+    setLoading(true);
+    setError("");
+    unsubscribe = onAuthStateChanged(auth, (user) => {
+      setAuthChecked(true);
+      if (!user) {
+        if (isMounted.current) {
           setError("You must be logged in to view your profile.");
           setLoading(false);
-          return;
         }
-        const userRef = doc(db, "users", user.uid);
-        const userSnap = await getDoc(userRef);
-        if (userSnap.exists()) {
-          const data = userSnap.data();
-          if (!didCancel) {
-            setUserData(data);
-            setMajor(data.major || "");
-            setInterests(data.tags || []);
-            setLoading(false);
+        return;
+      }
+      const fetchUserData = async () => {
+        try {
+          const userRef = doc(db, "users", user.uid);
+          const userSnap = await getDoc(userRef);
+          if (userSnap.exists()) {
+            const data = userSnap.data();
+            if (!didCancel && isMounted.current) {
+              setUserData(data);
+              setMajor(data.major || "");
+              setInterests(data.tags || []);
+              setJoinedClubs(Array.isArray(data.joinedClubs) ? data.joinedClubs : []);
+              setLoading(false);
+            }
+          } else {
+            if (isMounted.current) {
+              setError("User profile not found.");
+              setLoading(false);
+            }
           }
-        } else {
-          setError("User profile not found.");
-          setLoading(false);
+        } catch (err) {
+          if (retries < maxRetries) {
+            retries++;
+            setTimeout(fetchUserData, 1000 * retries); // Exponential backoff
+          } else {
+            if (isMounted.current) {
+              setError("Failed to load profile after several attempts. Please check your connection and try again.");
+              setLoading(false);
+            }
+          }
         }
-      } catch (err) {
-        setError("Failed to load profile. Please try again later.");
-        setLoading(false);
-      }
-    };
-    fetchUserData();
-    // Timeout fallback
-    const timeout = setTimeout(() => {
-      if (loading && !userData) {
-        setError("Profile loading timed out. Please refresh the page.");
-        setLoading(false);
-      }
-    }, 8000);
+      };
+      fetchUserData();
+    });
     return () => {
       didCancel = true;
-      clearTimeout(timeout);
+      isMounted.current = false;
+      if (unsubscribe) unsubscribe();
     };
   }, []);
 
@@ -136,7 +155,17 @@ function ProfilePage() {
     }
   };
 
-  if (loading) return <div>Loading...</div>;
+  // Remove (leave) a joined club
+  const handleRemoveJoinedClub = async (clubName) => {
+    const user = auth.currentUser;
+    if (!user) return;
+    const userRef = doc(db, 'users', user.uid);
+    const updated = joinedClubs.filter(name => name !== clubName);
+    await updateDoc(userRef, { joinedClubs: updated });
+    setJoinedClubs(updated);
+  };
+
+  if (loading || !authChecked) return <div>Loading...</div>;
   if (error) return <div style={{ color: 'red', padding: '2rem', textAlign: 'center' }}>{error}</div>;
   if (!userData) return null;
 
@@ -226,6 +255,36 @@ function ProfilePage() {
             <button onClick={handleAddInterest} style={styles.editBtn}>
               + Add Tag
             </button>
+          </div>
+        </div>
+        {/* Joined Clubs Section */}
+        <div style={styles.section}>
+          <span style={styles.label}>Joined Clubs:</span>
+          <div>
+            {joinedClubs.length === 0 ? (
+              <span style={{ color: '#888', fontSize: 15 }}>You haven't joined any clubs yet.</span>
+            ) : (
+              joinedClubs.map((club, idx) => (
+                <span key={idx} style={{ ...styles.tag, position: 'relative', backgroundColor: '#e5f0ff', color: '#003B5C', fontWeight: 600 }}>
+                  {club}
+                  <span
+                    style={{
+                      marginLeft: '0.4rem',
+                      cursor: 'pointer',
+                      color: '#c00',
+                      fontWeight: 'bold',
+                      fontSize: 15,
+                      opacity: 0,
+                      transition: 'opacity 0.2s',
+                    }}
+                    className="tag-remove-btn"
+                    onClick={() => handleRemoveJoinedClub(club)}
+                  >
+                    ×
+                  </span>
+                </span>
+              ))
+            )}
           </div>
         </div>
       </div>
