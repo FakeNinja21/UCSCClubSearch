@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { Calendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
-import { getFirestore, collection, getDocs, doc, getDoc } from 'firebase/firestore';
+import { getFirestore, collection, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth } from '../firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 import StudentNavigation from '../components/StudentNavigation';
 import { getEvents } from '../firebase';
 
@@ -14,29 +15,108 @@ const CalendarPage = () => {
   const db = getFirestore();
   const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState(null);
-  const [filter, setFilter] = useState('all'); // 'all', 'interest', 'joined'
+  const [filter, setFilter] = useState('all'); // 'all', followed
   const [userTags, setUserTags] = useState([]);
   const [joinedClubs, setJoinedClubs] = useState([]);
   const [clubs, setClubs] = useState([]);
+  const [selectedClubs, setSelectedClubs] = useState([]);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [user, setUser] = useState(null);
 
+  // Listen for authentication state changes
   useEffect(() => {
-    // Fetch user tags, joined clubs, and all clubs with tags
-    const fetchUserDataAndClubs = async () => {
-      const user = auth.currentUser;
-      if (!user) return;
-      const userRef = doc(db, 'users', user.uid);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      if (user) {
+        fetchUserDataAndClubs(user);
+      } else {
+        setUserTags([]);
+        setJoinedClubs([]);
+        setSelectedClubs([]);
+        setFilter('all');
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Fetch user data and clubs
+  const fetchUserDataAndClubs = async (currentUser) => {
+    if (!currentUser) return;
+    try {
+      const userRef = doc(db, 'users', currentUser.uid);
       const userSnap = await getDoc(userRef);
       if (userSnap.exists()) {
         const data = userSnap.data();
         setUserTags(Array.isArray(data.tags) ? data.tags : []);
         setJoinedClubs(Array.isArray(data.joinedClubs) ? data.joinedClubs : []);
+        setSelectedClubs(Array.isArray(data.selectedCalendarClubs) ? data.selectedCalendarClubs : []);
+        // Load the saved filter preference
+        setFilter(data.calendarFilter || 'all');
       }
       // Fetch all clubs and their tags
       const clubsSnapshot = await getDocs(collection(db, 'clubs'));
       setClubs(clubsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    };
-    fetchUserDataAndClubs();
-  }, []);
+    } catch (error) {
+      console.error('Error fetching user data and clubs:', error);
+    }
+  };
+
+  // Save selected clubs to user profile
+  const saveSelectedClubs = async (newSelectedClubs) => {
+    if (!user) return;
+    
+    try {
+      const userRef = doc(db, 'users', user.uid);
+      await updateDoc(userRef, {
+        selectedCalendarClubs: newSelectedClubs
+      });
+    } catch (error) {
+      console.error('Error saving selected clubs:', error);
+    }
+  };
+
+  // Save filter preference to user profile
+  const saveFilterPreference = async (newFilter) => {
+    if (!user) return;
+    
+    try {
+      const userRef = doc(db, 'users', user.uid);
+      await updateDoc(userRef, {
+        calendarFilter: newFilter
+      });
+    } catch (error) {
+      console.error('Error saving filter preference:', error);
+    }
+  };
+
+  // Handle filter change
+  const handleFilterChange = (newFilter) => {
+    setFilter(newFilter);
+    saveFilterPreference(newFilter);
+  };
+
+  // Handle club selection
+  const handleClubToggle = (clubName) => {
+    const newSelectedClubs = selectedClubs.includes(clubName)
+      ? selectedClubs.filter(name => name !== clubName)
+      : [...selectedClubs, clubName];
+    
+    setSelectedClubs(newSelectedClubs);
+    saveSelectedClubs(newSelectedClubs);
+  };
+
+  // Handle select all/none
+  const handleSelectAll = () => {
+    const allClubNames = clubs.map(club => club.name);
+    setSelectedClubs(allClubNames);
+    saveSelectedClubs(allClubNames);
+  };
+
+  const handleSelectNone = () => {
+    setSelectedClubs([]);
+    saveSelectedClubs([]);
+  };
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -74,21 +154,8 @@ const CalendarPage = () => {
 
   // Filtering logic
   let filteredEvents = events;
-  if (filter === 'interest') {
-    filteredEvents = events.filter(event => {
-      let club = null;
-      if (event.clubId) {
-        club = clubs.find(c => c.id === event.clubId);
-      }
-      if (!club && event.clubName) {
-        club = clubs.find(c => c.name === event.clubName);
-      }
-      const clubTags = Array.isArray(club?.tags) ? club.tags : [];
-      const userTagList = Array.isArray(userTags) ? userTags : [];
-      return clubTags.some(tag => userTagList.includes(tag));
-    });
-  } else if (filter === 'joined') {
-    filteredEvents = events.filter(event => joinedClubs.includes(event.clubName));
+  if (filter === 'followed') {
+    filteredEvents = events.filter(event => selectedClubs.includes(event.clubName));
   }
 
   // Custom event style for color coding
@@ -159,34 +226,140 @@ const CalendarPage = () => {
         <StudentNavigation />
       </div>
       <div style={{ paddingTop: 80, maxWidth: 1400, margin: '0 auto', paddingLeft: 16, paddingRight: 16 }}>
-        <h2 style={{ color: '#003B5C', fontWeight: 900, fontSize: 36, margin: '32px 0 24px 0', letterSpacing: 0.5 }}>📅 Club Events Calendar</h2>
-        {/* Calendar Filters */}
-        <div style={{ display: 'flex', gap: 32, alignItems: 'center', marginBottom: 24 }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, color: '#003B5C', fontSize: 17 }}>
-            <input type="radio" name="calfilter" checked={filter === 'all'} onChange={() => setFilter('all')} /> All Clubs
-          </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, color: '#003B5C', fontSize: 17 }}>
-            <input type="radio" name="calfilter" checked={filter === 'interest'} onChange={() => setFilter('interest')} /> Topics of Interest
-          </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, color: '#003B5C', fontSize: 17 }}>
-            <input type="radio" name="calfilter" checked={filter === 'joined'} onChange={() => setFilter('joined')} /> Joined Clubs
-          </label>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '32px 0 0 0' }}>
+          <h2 style={{ color: '#003B5C', fontWeight: 900, fontSize: 36, letterSpacing: 0.5 }}>📅 Club Events Calendar</h2>
+          <button 
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            style={{
+              background: '#003B5C',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 8,
+              padding: '8px 16px',
+              cursor: 'pointer',
+              fontWeight: 600,
+              fontSize: 14
+            }}
+          >
+            {sidebarOpen ? 'Hide' : 'Show'} Club Filters
+          </button>
         </div>
-        {loading ? <p>Loading events...</p> : (
-          <Calendar
-            localizer={localizer}
-            events={filteredEvents}
-            startAccessor="start"
-            endAccessor="end"
-            style={{ height: 700, background: '#fff', borderRadius: 16, boxShadow: '0 4px 24px rgba(0,0,0,0.08)', padding: 24 }}
-            eventPropGetter={eventStyleGetter}
-            popup
-            views={['month', 'week', 'day', 'agenda']}
-            components={{ event: (props) => <span>{props.title}</span>, eventWrapper: ({ event, children }) => <div title={event.desc}>{children}</div> }}
-            tooltipAccessor={null}
-            onSelectEvent={event => setSelectedEvent(event)}
-          />
-        )}
+        
+        <div style={{ display: 'flex', gap: 24, flexDirection: 'row-reverse' }}>
+          {/* Clubs Filter Sidebar - now on the right */}
+          {sidebarOpen && (
+            <div style={{
+              width: 280,
+              background: '#fff',
+              borderRadius: 16,
+              padding: 24,
+              height: 'fit-content',
+              boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+              position: 'sticky',
+              top: 100
+            }}>
+              <h3 style={{ color: '#003B5C', fontWeight: 800, fontSize: 20, marginBottom: 16 }}>Clubs Joined</h3>
+              {/* Filter Options */}
+              <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, color: '#003B5C', fontSize: 14, marginBottom: 8 }}>
+                  <input type="radio" name="calfilter" checked={filter === 'all'} onChange={() => handleFilterChange('all')} /> All Clubs
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, color: '#003B5C', fontSize: 14, marginBottom: 8 }}>
+                  <input type="radio" name="calfilter" checked={filter === 'followed'} onChange={() => handleFilterChange('followed')} /> Followed Clubs
+                </label>
+              </div>
+
+              {/* Select All/None buttons and club checkboxes only for Selected Clubs */}
+              {filter === 'followed' && (
+                <>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                    <button 
+                      onClick={handleSelectAll}
+                      style={{
+                        background: '#e5f0ff',
+                        color: '#003B5C',
+                        border: 'none',
+                        borderRadius: 6,
+                        padding: '6px 12px',
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                        fontSize: 12
+                      }}
+                    >
+                      Select All
+                    </button>
+                    <button 
+                      onClick={handleSelectNone}
+                      style={{
+                        background: '#e5f0ff',
+                        color: '#003B5C',
+                        border: 'none',
+                        borderRadius: 6,
+                        padding: '6px 12px',
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                        fontSize: 12
+                      }}
+                    >
+                      Select None
+                    </button>
+                  </div>
+                  {/* Club checkboxes - only show joined clubs */}
+                  <div style={{ maxHeight: 400, overflowY: 'auto' }}>
+                    {clubs.filter(club => joinedClubs.includes(club.name)).map((club) => (
+                      <label key={club.id} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 12,
+                        padding: '8px 0',
+                        cursor: 'pointer',
+                        borderBottom: '1px solid #f0f0f0',
+                        fontSize: 14,
+                        fontWeight: 500,
+                        color: '#003B5C'
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedClubs.includes(club.name)}
+                          onChange={() => handleClubToggle(club.name)}
+                          style={{
+                            width: 16,
+                            height: 16,
+                            accentColor: '#003B5C'
+                          }}
+                        />
+                        <span style={{ flex: 1 }}>{club.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                </>
+              )}
+              <div style={{ marginTop: 16, padding: 12, background: '#f8f9fa', borderRadius: 8, fontSize: 12, color: '#666' }}>
+                <strong>Selected:</strong> {selectedClubs.length} of {clubs.filter(club => joinedClubs.includes(club.name)).length} clubs
+              </div>
+            </div>
+          )}
+
+          {/* Calendar */}
+          <div style={{ flex: 1 }}>
+            {loading ? <p>Loading events...</p> : (
+              <Calendar
+                localizer={localizer}
+                events={filteredEvents}
+                startAccessor="start"
+                endAccessor="end"
+                style={{ height: 700, background: '#fff', borderRadius: 16, boxShadow: '0 4px 24px rgba(0,0,0,0.08)', padding: 24 }}
+                eventPropGetter={eventStyleGetter}
+                popup
+                views={['month', 'week', 'day']}
+                components={{ event: (props) => <span>{props.title}</span>, eventWrapper: ({ event, children }) => <div title={event.desc}>{children}</div> }}
+                tooltipAccessor={null}
+                onSelectEvent={event => setSelectedEvent(event)}
+              />
+            )}
+          </div>
+        </div>
+        
         {selectedEvent && <EventModal event={selectedEvent} onClose={() => setSelectedEvent(null)} />}
       </div>
     </div>

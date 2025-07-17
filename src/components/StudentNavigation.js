@@ -1,8 +1,14 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { auth } from "../firebase";
 
 const Navigation = () => {
   const navigate = useNavigate();
+
+  const handleLogout = () => {
+    auth.signOut();
+    navigate("/");
+  };
 
   return (
     <nav style={styles.navbar}>
@@ -10,6 +16,7 @@ const Navigation = () => {
       <button style={styles.button} onClick={() => navigate("/browse-clubs")}>🔍 Browse Clubs</button>
       <button style={styles.button} onClick={() => navigate("/calendar")}>📅 Calendar</button>
       <button style={styles.button} onClick={() => navigate("/profile")}>👤 Profile</button>
+      <button style={styles.button} onClick={handleLogout}>🚪 Logout</button>
     </nav>
   );
 };

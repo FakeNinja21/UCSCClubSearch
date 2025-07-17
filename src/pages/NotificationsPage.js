@@ -5,6 +5,7 @@ import { getEvents } from '../firebase'; // ⬇️ ADDED import for our getEvent
 import availableTags from '../data/availableTags';
 import { auth, db } from '../firebase';
 import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 
 export default function NotificationsPage() {
   // ⬇️ ADDED state to hold events, loading status, and errors
@@ -14,6 +15,39 @@ export default function NotificationsPage() {
   const [filter, setFilter] = useState('all');
   const [userTags, setUserTags] = useState([]);
   const [clubs, setClubs] = useState([]);
+  const [user, setUser] = useState(null);
+
+  // Listen for authentication state changes
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      if (user) {
+        fetchUserTagsAndClubs(user);
+      } else {
+        setUserTags([]);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Fetch user tags and all clubs
+  const fetchUserTagsAndClubs = async (currentUser) => {
+    if (!currentUser) return;
+    try {
+      const userRef = doc(db, 'users', currentUser.uid);
+      const userSnap = await getDoc(userRef);
+      if (userSnap.exists()) {
+        const data = userSnap.data();
+        setUserTags(Array.isArray(data.tags) ? data.tags.filter(tag => availableTags.includes(tag)) : []);
+      }
+      // Fetch all clubs and their tags
+      const clubsSnapshot = await getDocs(collection(db, 'clubs'));
+      setClubs(clubsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    } catch (error) {
+      console.error('Error fetching user tags and clubs:', error);
+    }
+  };
 
   // ⬇️ ADDED useEffect to fetch data when the component loads
   useEffect(() => {
@@ -32,25 +66,6 @@ export default function NotificationsPage() {
 
     fetchEvents();
   }, []); // The empty [] means this runs only once
-
-  // Fetch user tags and all clubs on mount
-  useEffect(() => {
-    const fetchUserTagsAndClubs = async () => {
-      const user = auth.currentUser;
-      if (user) {
-        const userRef = doc(db, 'users', user.uid);
-        const userSnap = await getDoc(userRef);
-        if (userSnap.exists()) {
-          const data = userSnap.data();
-          setUserTags(Array.isArray(data.tags) ? data.tags.filter(tag => availableTags.includes(tag)) : []);
-        }
-      }
-      // Fetch all clubs and their tags
-      const clubsSnapshot = await getDocs(collection(db, 'clubs'));
-      setClubs(clubsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    };
-    fetchUserTagsAndClubs();
-  }, []);
 
   const filteredEvents = filter === 'all'
     ? events

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import StudentNavigation from '../components/StudentNavigation';
 import { collection, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 import availableTags from '../data/availableTags';
 
 function BrowseClubs() {
@@ -12,6 +13,7 @@ function BrowseClubs() {
   const [search, setSearch] = useState('');
   const [selectedTags, setSelectedTags] = useState([]);
   const [joinedClubs, setJoinedClubs] = useState([]);
+  const [user, setUser] = useState(null);
 
   // Pastel color palette for tags
   const pastelColors = [
@@ -21,6 +23,34 @@ function BrowseClubs() {
     map[tag] = pastelColors[idx % pastelColors.length];
     return map;
   }, {});
+
+  // Listen for authentication state changes
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      if (user) {
+        fetchJoinedClubs(user);
+      } else {
+        setJoinedClubs([]);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const fetchJoinedClubs = async (currentUser) => {
+    if (!currentUser) return;
+    try {
+      const userRef = doc(db, 'users', currentUser.uid);
+      const userSnap = await getDoc(userRef);
+      if (userSnap.exists()) {
+        const data = userSnap.data();
+        setJoinedClubs(Array.isArray(data.joinedClubs) ? data.joinedClubs : []);
+      }
+    } catch (error) {
+      console.error('Error fetching joined clubs:', error);
+    }
+  };
 
   useEffect(() => {
     const fetchClubs = async () => {
@@ -34,22 +64,6 @@ function BrowseClubs() {
       setLoading(false);
     };
     fetchClubs();
-  }, []);
-
-  useEffect(() => {
-    // Fetch joined clubs for the current student
-    const fetchJoinedClubs = async () => {
-      const user = auth.currentUser;
-      if (!user) return;
-      const userRef = doc(db, 'users', user.uid);
-      const userSnap = await getDoc(userRef);
-      if (userSnap.exists()) {
-        const data = userSnap.data();
-        // joined clubs are tags like 'joined:ClubName'
-        setJoinedClubs(Array.isArray(data.joinedClubs) ? data.joinedClubs : []);
-      }
-    };
-    fetchJoinedClubs();
   }, []);
 
   const filteredClubs = clubs.filter(club => {
@@ -70,19 +84,22 @@ function BrowseClubs() {
   const handleRemoveTag = (tag) => setSelectedTags(selectedTags.filter(t => t !== tag));
 
   const handleJoinClub = async (clubName) => {
-    const user = auth.currentUser;
     if (!user) return;
-    const userRef = doc(db, 'users', user.uid);
-    const userSnap = await getDoc(userRef);
-    let joined = [];
-    if (userSnap.exists()) {
-      const data = userSnap.data();
-      joined = Array.isArray(data.joinedClubs) ? data.joinedClubs : [];
-    }
-    if (!joined.includes(clubName)) {
-      const updated = [...joined, clubName];
-      await updateDoc(userRef, { joinedClubs: updated });
-      setJoinedClubs(updated);
+    try {
+      const userRef = doc(db, 'users', user.uid);
+      const userSnap = await getDoc(userRef);
+      let joined = [];
+      if (userSnap.exists()) {
+        const data = userSnap.data();
+        joined = Array.isArray(data.joinedClubs) ? data.joinedClubs : [];
+      }
+      if (!joined.includes(clubName)) {
+        const updated = [...joined, clubName];
+        await updateDoc(userRef, { joinedClubs: updated });
+        setJoinedClubs(updated);
+      }
+    } catch (error) {
+      console.error('Error joining club:', error);
     }
   };
 
@@ -209,7 +226,7 @@ function BrowseClubs() {
                       transition: 'background 0.2s, color 0.2s',
                     }}
                   >
-                    {joinedClubs.includes(club.name) ? 'Joined' : 'Join Club'}
+                    {joinedClubs.includes(club.name) ? 'Followed' : 'Follow'}
                   </button>
                 </div>
               );
