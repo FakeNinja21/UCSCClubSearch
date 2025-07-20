@@ -4,7 +4,7 @@ import StudentNavigation from "../components/StudentNavigation";
 import { getEvents } from '../firebase'; // ⬇️ ADDED import for our getEvents function
 import availableTags from '../data/availableTags';
 import { auth, db } from '../firebase';
-import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 
 export default function NotificationsPage() {
@@ -67,6 +67,46 @@ export default function NotificationsPage() {
     fetchEvents();
   }, []); // The empty [] means this runs only once
 
+  // Add this function to handle event sign up
+  const handleSignUp = async (eventId) => {
+    if (!user) return;
+    try {
+      const eventRef = doc(db, 'events', eventId);
+      await updateDoc(eventRef, {
+        attendees: arrayUnion(user.uid)
+      });
+      // Update local state to reflect the change
+      setEvents(prevEvents => prevEvents.map(ev =>
+        ev.id === eventId
+          ? { ...ev, attendees: Array.isArray(ev.attendees) ? [...ev.attendees, user.uid] : [user.uid] }
+          : ev
+      ));
+    } catch (err) {
+      alert('Failed to sign up for event.');
+      console.error(err);
+    }
+  };
+
+  // Add this function to handle removing event sign up
+  const handleRemoveSignup = async (eventId) => {
+    if (!user) return;
+    try {
+      const eventRef = doc(db, 'events', eventId);
+      await updateDoc(eventRef, {
+        attendees: arrayRemove(user.uid)
+      });
+      // Update local state to reflect the change
+      setEvents(prevEvents => prevEvents.map(ev =>
+        ev.id === eventId
+          ? { ...ev, attendees: Array.isArray(ev.attendees) ? ev.attendees.filter(uid => uid !== user.uid) : [] }
+          : ev
+      ));
+    } catch (err) {
+      alert('Failed to remove signup.');
+      console.error(err);
+    }
+  };
+
   const filteredEvents = filter === 'all'
     ? events
     : events.filter(event => {
@@ -96,76 +136,122 @@ export default function NotificationsPage() {
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
-        gap: 40,
+        gap: 48,
         justifyItems: 'center',
         alignItems: 'start',
         maxWidth: 1200,
         margin: '0 auto',
+        paddingBottom: 40,
       }}>
-        {filteredEvents.map(event => (
-          <div
-            key={event.id}
-            style={{
-              background: event.bgColor || '#fff',
-              border: '1px solid #e0e0e0',
-              borderRadius: 20,
-              boxShadow: '0 4px 24px rgba(0,0,0,0.10)',
-              padding: 32,
-              width: 350,
-              minHeight: 440,
-              display: 'flex',
-              flexDirection: 'column',
-              fontFamily: 'Inter, Arial, sans-serif',
-              marginBottom: 0,
-              transition: 'box-shadow 0.2s, transform 0.2s',
-              position: 'relative',
-              overflow: 'hidden',
-              cursor: 'pointer',
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.boxShadow = '0 8px 32px rgba(0,0,0,0.16)';
-              e.currentTarget.style.transform = 'translateY(-4px) scale(1.02)';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.boxShadow = '0 4px 24px rgba(0,0,0,0.10)';
-              e.currentTarget.style.transform = 'none';
-            }}
-          >
-            <h3 style={{ fontSize: 24, fontWeight: 800, color: '#003B5C', marginBottom: 10, textAlign: 'center', letterSpacing: 0.5 }}>{event.eventName}</h3>
-            {event.bannerUrl && (
-              <img src={event.bannerUrl} alt="Event Banner" style={{ width: '100%', maxHeight: 160, objectFit: 'cover', borderRadius: 10, marginBottom: 16, border: '2px solid #FFD700', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }} />
-            )}
-            {Array.isArray(event.tags) && event.tags.length > 0 && (
-              <div style={{ marginBottom: 12, display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
-                {event.tags.map((tag, idx) => (
-                  <span key={idx} style={{ background: '#e5f0ff', color: '#003B5C', borderRadius: 12, padding: '4px 12px', fontSize: 13, fontWeight: 600, letterSpacing: 0.2 }}>{tag}</span>
-                ))}
+        {filteredEvents.map(event => {
+          const alreadySignedUp = Array.isArray(event.attendees) && user && event.attendees.includes(user.uid);
+          return (
+            <div
+              key={event.id}
+              style={{
+                background: event.bgColor || '#fff',
+                border: '1.5px solid #e0e0e0',
+                borderRadius: 24,
+                boxShadow: '0 6px 32px rgba(0,0,0,0.10)',
+                padding: 36,
+                width: 370,
+                minHeight: 480,
+                display: 'flex',
+                flexDirection: 'column',
+                fontFamily: 'Inter, Arial, sans-serif',
+                marginBottom: 0,
+                transition: 'box-shadow 0.2s, transform 0.2s',
+                position: 'relative',
+                overflow: 'hidden',
+                cursor: 'pointer',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.boxShadow = '0 12px 36px rgba(0,0,0,0.16)';
+                e.currentTarget.style.transform = 'translateY(-4px) scale(1.02)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.boxShadow = '0 6px 32px rgba(0,0,0,0.10)';
+                e.currentTarget.style.transform = 'none';
+              }}
+            >
+              <h3 style={{ fontSize: 26, fontWeight: 900, color: '#003B5C', marginBottom: 14, textAlign: 'center', letterSpacing: 0.5 }}>{event.eventName}</h3>
+              {event.bannerUrl && (
+                <img src={event.bannerUrl} alt="Event Banner" style={{ width: '100%', height: 170, objectFit: 'cover', borderRadius: 14, marginBottom: 18, border: '2px solid #FFD700', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }} />
+              )}
+              {Array.isArray(event.tags) && event.tags.length > 0 && (
+                <div style={{ marginBottom: 14, display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
+                  {event.tags.map((tag, idx) => (
+                    <span key={idx} style={{ background: '#e5f0ff', color: '#003B5C', borderRadius: 14, padding: '5px 14px', fontSize: 14, fontWeight: 700, letterSpacing: 0.2 }}>{tag}</span>
+                  ))}
+                </div>
+              )}
+              <div style={{ color: '#003B5C', fontWeight: 700, marginBottom: 8 }}>Hosted by: <span style={{ fontWeight: 400 }}>{event.clubName}</span></div>
+              <div style={{ marginBottom: 12, color: '#222', fontWeight: 500 }}><span style={{ color: '#003B5C', fontWeight: 700 }}>Description:</span> {event.description}</div>
+              <div style={{ marginBottom: 8 }}>
+                <span style={{ color: '#003B5C', fontWeight: 700 }}>Date:</span> {event.date}
               </div>
-            )}
-            <div style={{ color: '#003B5C', fontWeight: 700, marginBottom: 6 }}>Hosted by: <span style={{ fontWeight: 400 }}>{event.clubName}</span></div>
-            <div style={{ marginBottom: 10 }}><span style={{ color: '#003B5C', fontWeight: 700 }}>Description:</span> {event.description}</div>
-            <div style={{ marginBottom: 6 }}>
-              <span style={{ color: '#003B5C', fontWeight: 700 }}>Date:</span> {event.date}
-            </div>
-            <div style={{ marginBottom: 6 }}>
-              <span style={{ color: '#003B5C', fontWeight: 700 }}>Start Time:</span> {event.startTime}
-            </div>
-            <div style={{ marginBottom: 6 }}>
-              <span style={{ color: '#003B5C', fontWeight: 700 }}>End Time:</span> {event.endTime}
-            </div>
-            <div style={{ marginBottom: 6 }}>
-              <span style={{ color: '#003B5C', fontWeight: 700 }}>Location:</span> {event.location}
-            </div>
-            {event.zoomLink && (
-              <div style={{ marginBottom: 6 }}>
-                <span style={{ color: '#003B5C', fontWeight: 700 }}>Zoom Link:</span> <a href={event.zoomLink} target="_blank" rel="noopener noreferrer" style={{ color: '#003B5C', textDecoration: 'underline', wordBreak: 'break-all' }}>{event.zoomLink}</a>
+              <div style={{ marginBottom: 8 }}>
+                <span style={{ color: '#003B5C', fontWeight: 700 }}>Start Time:</span> {event.startTime}
               </div>
-            )}
-            <div style={{ marginBottom: 6 }}>
-              <span style={{ color: '#003B5C', fontWeight: 700 }}>Who can attend:</span> {event.openTo === 'everyone' ? 'Everyone' : 'Club Members Only'}
+              <div style={{ marginBottom: 8 }}>
+                <span style={{ color: '#003B5C', fontWeight: 700 }}>End Time:</span> {event.endTime}
+              </div>
+              <div style={{ marginBottom: 8 }}>
+                <span style={{ color: '#003B5C', fontWeight: 700 }}>Location:</span> {event.location}
+              </div>
+              {event.zoomLink && (
+                <div style={{ marginBottom: 8 }}>
+                  <span style={{ color: '#003B5C', fontWeight: 700 }}>Zoom Link:</span> <a href={event.zoomLink} target="_blank" rel="noopener noreferrer" style={{ color: '#003B5C', textDecoration: 'underline', wordBreak: 'break-all' }}>{event.zoomLink}</a>
+                </div>
+              )}
+              <div style={{ marginBottom: 8 }}>
+                <span style={{ color: '#003B5C', fontWeight: 700 }}>Who can attend:</span> {event.openTo === 'everyone' ? 'Everyone' : 'Club Members Only'}
+              </div>
+              {/* Sign Up/Remove Signup Button */}
+              {alreadySignedUp ? (
+                <button
+                  onClick={() => handleRemoveSignup(event.id)}
+                  style={{
+                    marginTop: 18,
+                    background: '#fffbe5',
+                    color: '#c00',
+                    border: '1.5px solid #c00',
+                    borderRadius: 10,
+                    padding: '14px 0',
+                    fontSize: 18,
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                    transition: 'background 0.2s, color 0.2s',
+                    width: '100%'
+                  }}
+                >
+                  Remove Signup
+                </button>
+              ) : (
+                <button
+                  onClick={() => handleSignUp(event.id)}
+                  style={{
+                    marginTop: 18,
+                    background: '#003B5C',
+                    color: '#FFD700',
+                    border: 'none',
+                    borderRadius: 10,
+                    padding: '14px 0',
+                    fontSize: 18,
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                    transition: 'background 0.2s, color 0.2s',
+                    width: '100%'
+                  }}
+                >
+                  Sign Up
+                </button>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
   };

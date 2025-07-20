@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import StudentNavigation from '../components/StudentNavigation';
-import { collection, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import availableTags from '../data/availableTags';
@@ -97,9 +97,41 @@ function BrowseClubs() {
         const updated = [...joined, clubName];
         await updateDoc(userRef, { joinedClubs: updated });
         setJoinedClubs(updated);
+        // Also add the student's uid to the club's followers array
+        const clubDoc = clubs.find(c => c.name === clubName);
+        if (clubDoc) {
+          const clubRef = doc(db, 'clubs', clubDoc.id);
+          await updateDoc(clubRef, { followers: arrayUnion(user.uid) });
+        }
       }
     } catch (error) {
       console.error('Error joining club:', error);
+    }
+  };
+
+  const handleUnfollowClub = async (clubName) => {
+    if (!user) return;
+    try {
+      const userRef = doc(db, 'users', user.uid);
+      const userSnap = await getDoc(userRef);
+      let joined = [];
+      if (userSnap.exists()) {
+        const data = userSnap.data();
+        joined = Array.isArray(data.joinedClubs) ? data.joinedClubs : [];
+      }
+      if (joined.includes(clubName)) {
+        const updated = joined.filter(name => name !== clubName);
+        await updateDoc(userRef, { joinedClubs: updated });
+        setJoinedClubs(updated);
+        // Also remove the student's uid from the club's followers array
+        const clubDoc = clubs.find(c => c.name === clubName);
+        if (clubDoc) {
+          const clubRef = doc(db, 'clubs', clubDoc.id);
+          await updateDoc(clubRef, { followers: arrayRemove(user.uid) });
+        }
+      }
+    } catch (error) {
+      console.error('Error unfollowing club:', error);
     }
   };
 
@@ -152,6 +184,7 @@ function BrowseClubs() {
             alignItems: 'start',
             maxWidth: 1200,
             margin: '0 auto',
+            paddingBottom: 40,
           }}>
             {filteredClubs.map(club => {
               const imgs = Array.isArray(club.imageUrls) ? club.imageUrls : [];
@@ -161,12 +194,12 @@ function BrowseClubs() {
               return (
                 <div key={club.id} style={{
                   background: bgColor,
-                  border: '1px solid #e0e0e0',
-                  borderRadius: 20,
-                  boxShadow: '0 4px 24px rgba(0,0,0,0.10)',
-                  padding: 32,
-                  width: 350,
-                  minHeight: 440,
+                  border: '1.5px solid #e0e0e0',
+                  borderRadius: 24,
+                  boxShadow: '0 6px 32px rgba(0,0,0,0.10)',
+                  padding: 36,
+                  width: 370,
+                  minHeight: imgs.length > 0 ? 320 : 180,
                   display: 'flex',
                   flexDirection: 'column',
                   fontFamily: 'Inter, Arial, sans-serif',
@@ -175,12 +208,14 @@ function BrowseClubs() {
                   position: 'relative',
                   overflow: 'hidden',
                   cursor: 'pointer',
-                }}>
-                  <h3 style={{ fontSize: 24, fontWeight: 800, color: '#003B5C', marginBottom: 10, textAlign: 'center', letterSpacing: 0.5 }}>{club.name}</h3>
+                }}
+                onClick={() => handleExpand(club.id)}
+                >
+                  <h3 style={{ fontSize: 26, fontWeight: 900, color: '#003B5C', marginBottom: 14, textAlign: 'center', letterSpacing: 0.5 }}>{club.name}</h3>
                   {imgs.length > 0 && (
                     <div style={{ position: 'relative', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
                       <button
-                        onClick={() => handleCarousel(club.id, -1, imgs.length)}
+                        onClick={e => { e.stopPropagation(); handleCarousel(club.id, -1, imgs.length); }}
                         style={{
                           position: 'absolute',
                           left: 0,
@@ -204,7 +239,7 @@ function BrowseClubs() {
                       >&lt;</button>
                       <img src={imgs[idx]} alt="Club" style={{ width: '100%', maxHeight: 160, objectFit: 'cover', borderRadius: 10, border: '2px solid #FFD700', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }} />
                       <button
-                        onClick={() => handleCarousel(club.id, 1, imgs.length)}
+                        onClick={e => { e.stopPropagation(); handleCarousel(club.id, 1, imgs.length); }}
                         style={{
                           position: 'absolute',
                           right: 0,
@@ -262,7 +297,7 @@ function BrowseClubs() {
                                   transition: 'background 0.2s, border 0.2s',
                                   cursor: 'pointer'
                                 }}
-                                onClick={() => setCarouselIdx(prev => ({ ...prev, [club.id]: dotIdx }))}
+                                onClick={e => { e.stopPropagation(); setCarouselIdx(prev => ({ ...prev, [club.id]: dotIdx })); }}
                               />
                             );
                           });
@@ -271,49 +306,60 @@ function BrowseClubs() {
                     </div>
                   )}
                   {Array.isArray(club.tags) && club.tags.length > 0 && (
-                    <div style={{ marginBottom: 12, display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
+                    <div style={{ marginBottom: 14, display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
                       {club.tags.map((tag, idx) => (
-                        <span key={idx} style={{ background: tagColorMap[tag] || '#e5f0ff', color: '#003B5C', borderRadius: 12, padding: '4px 12px', fontSize: 13, fontWeight: 600, letterSpacing: 0.2 }}>{tag}</span>
+                        <span key={idx} style={{ background: tagColorMap[tag] || '#e5f0ff', color: '#003B5C', borderRadius: 14, padding: '5px 14px', fontSize: 14, fontWeight: 700, letterSpacing: 0.2 }}>{tag}</span>
                       ))}
                     </div>
                   )}
-                  <div style={{ marginBottom: 10, color: '#003B5C', fontWeight: 600, textAlign: 'center' }}>
-                    {club.description && club.description.length > 80 && !expanded[club.id]
-                      ? club.description.slice(0, 80) + '...'
-                      : club.description}
-                    {club.description && club.description.length > 80 && (
-                      <button onClick={() => handleExpand(club.id)} style={{ background: 'none', border: 'none', color: '#007bff', fontWeight: 600, marginLeft: 6, cursor: 'pointer', fontSize: 15 }}>
-                        {expanded[club.id] ? 'Show less' : '...more'}
-                      </button>
-                    )}
-                  </div>
+                  {/* Expandable Description */}
                   {expanded[club.id] && (
-                    <div style={{ marginTop: 10, color: '#003B5C', fontSize: 15 }}>
-                      <div><b>Email:</b> {club.email}</div>
-                      <div><b>Instagram:</b> {club.instagram}</div>
+                    <div style={{ marginTop: 18, color: '#003B5C', fontSize: 15, background: '#fffbe5', borderRadius: 12, padding: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+                      <div><b>Description:</b> {club.description}</div>
                     </div>
                   )}
-                  {/* Join Club Button */}
-                  <button
-                    onClick={() => handleJoinClub(club.name)}
-                    disabled={joinedClubs.includes(club.name)}
-                    style={{
-                      marginTop: 18,
-                      width: '100%',
-                      background: joinedClubs.includes(club.name) ? '#e5f0ff' : '#003B5C',
-                      color: joinedClubs.includes(club.name) ? '#003B5C' : '#FFD700',
-                      border: 'none',
-                      borderRadius: 8,
-                      padding: '12px 0',
-                      fontSize: 16,
-                      fontWeight: 700,
-                      cursor: joinedClubs.includes(club.name) ? 'not-allowed' : 'pointer',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-                      transition: 'background 0.2s, color 0.2s',
-                    }}
-                  >
-                    {joinedClubs.includes(club.name) ? 'Followed' : 'Follow'}
-                  </button>
+                  {/* Join/Unfollow Club Button */}
+                  {joinedClubs.includes(club.name) ? (
+                    <button
+                      onClick={e => { e.stopPropagation(); handleUnfollowClub(club.name); }}
+                      style={{
+                        marginTop: 18,
+                        width: '100%',
+                        background: '#fffbe5',
+                        color: '#c00',
+                        border: '1.5px solid #c00',
+                        borderRadius: 10,
+                        padding: '14px 0',
+                        fontSize: 18,
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                        transition: 'background 0.2s, color 0.2s',
+                      }}
+                    >
+                      Unfollow
+                    </button>
+                  ) : (
+                    <button
+                      onClick={e => { e.stopPropagation(); handleJoinClub(club.name); }}
+                      style={{
+                        marginTop: 18,
+                        width: '100%',
+                        background: '#003B5C',
+                        color: '#FFD700',
+                        border: 'none',
+                        borderRadius: 10,
+                        padding: '14px 0',
+                        fontSize: 18,
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                        transition: 'background 0.2s, color 0.2s',
+                      }}
+                    >
+                      Follow
+                    </button>
+                  )}
                 </div>
               );
             })}
