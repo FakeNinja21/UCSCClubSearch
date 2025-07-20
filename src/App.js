@@ -14,6 +14,8 @@ import ClubProfilePage from "./pages/ClubProfilePage.js";
 import CreateEventPage from './pages/CreateEventPage.js';
 import YourEventsPage from './pages/YourEventsPage.js';
 import HomePage from './pages/HomePage.js';
+// ⬇️ ADDED: Import the correct dashboard component
+import ClubDashboard from './pages/ClubDashboard.js';
 
 function App() {
   return (
@@ -37,8 +39,8 @@ function App() {
         <Route path="/club-profile" element={<ClubProfilePage />} />
         <Route path="/create-event" element={<CreateEventPage />} />
         <Route path="/your-events" element={<YourEventsPage />} />
-        {/* ADDED: Route for a generic Club Dashboard, points to the profile */}
-        <Route path="/club-dashboard" element={<ClubProfilePage />} />
+        {/* ⬇️ FIXED: This route now points to the correct dashboard component */}
+        <Route path="/club-dashboard" element={<ClubDashboard />} />
 
 
         {/* General Routes */}

@@ -16,7 +16,9 @@ const DevDashboard = () => {
       <hr />
 
       <nav>
-        <button style={linkStyle} onClick={() => navigate('/landing')}>➡️ Go to the Real Landing Page</button>
+        {/* This line is now fixed to point to the correct path */}
+        <button style={linkStyle} onClick={() => navigate('/')}>➡️ Go to the Real Landing Page</button>
+        
         <button style={linkStyle} onClick={() => navigate('/student-login')}>➡️ Student Login Page</button>
         <button style={linkStyle} onClick={() => navigate('/student-signup')}>➡️ Student Sign Up Page</button>
         <button style={linkStyle} onClick={() => navigate('/club-login')}>➡️ Club Login Page</button>
