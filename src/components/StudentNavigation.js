@@ -7,7 +7,7 @@ const Navigation = () => {
 
   const handleLogout = () => {
     auth.signOut();
-    navigate("/");
+    navigate("/"); // Go to HomePage
   };
 
   return (

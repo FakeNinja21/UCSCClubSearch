@@ -178,10 +178,96 @@ function BrowseClubs() {
                 }}>
                   <h3 style={{ fontSize: 24, fontWeight: 800, color: '#003B5C', marginBottom: 10, textAlign: 'center', letterSpacing: 0.5 }}>{club.name}</h3>
                   {imgs.length > 0 && (
-                    <div style={{ position: 'relative', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <button onClick={() => handleCarousel(club.id, -1, imgs.length)} style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.08)', border: 'none', borderRadius: '50%', width: 32, height: 32, fontSize: 18, color: '#003B5C', cursor: 'pointer', zIndex: 2 }}>&lt;</button>
+                    <div style={{ position: 'relative', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
+                      <button
+                        onClick={() => handleCarousel(club.id, -1, imgs.length)}
+                        style={{
+                          position: 'absolute',
+                          left: 0,
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          background: '#fff',
+                          border: '1.5px solid #FFD700',
+                          borderRadius: '50%',
+                          width: 32,
+                          height: 32,
+                          fontSize: 18,
+                          color: '#003B5C',
+                          cursor: 'pointer',
+                          zIndex: 2,
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          opacity: 0.95
+                        }}
+                      >&lt;</button>
                       <img src={imgs[idx]} alt="Club" style={{ width: '100%', maxHeight: 160, objectFit: 'cover', borderRadius: 10, border: '2px solid #FFD700', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }} />
-                      <button onClick={() => handleCarousel(club.id, 1, imgs.length)} style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.08)', border: 'none', borderRadius: '50%', width: 32, height: 32, fontSize: 18, color: '#003B5C', cursor: 'pointer', zIndex: 2 }}>&gt;</button>
+                      <button
+                        onClick={() => handleCarousel(club.id, 1, imgs.length)}
+                        style={{
+                          position: 'absolute',
+                          right: 0,
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          background: '#fff',
+                          border: '1.5px solid #FFD700',
+                          borderRadius: '50%',
+                          width: 32,
+                          height: 32,
+                          fontSize: 18,
+                          color: '#003B5C',
+                          cursor: 'pointer',
+                          zIndex: 2,
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          opacity: 0.95
+                        }}
+                      >&gt;</button>
+                      {/* Instagram-style dots */}
+                      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 10 }}>
+                        {(() => {
+                          const maxDots = 5;
+                          const total = imgs.length;
+                          let start = 0;
+                          let end = total;
+                          if (total > maxDots) {
+                            if (idx <= 2) {
+                              start = 0;
+                              end = maxDots;
+                            } else if (idx >= total - 3) {
+                              start = total - maxDots;
+                              end = total;
+                            } else {
+                              start = idx - 2;
+                              end = idx + 3;
+                            }
+                          }
+                          return Array.from({ length: Math.min(total, maxDots) }, (_, i) => {
+                            const dotIdx = total > maxDots ? start + i : i;
+                            return (
+                              <span
+                                key={dotIdx}
+                                style={{
+                                  width: 10,
+                                  height: 10,
+                                  borderRadius: '50%',
+                                  background: dotIdx === idx ? '#fff' : 'rgba(255,255,255,0.5)',
+                                  border: dotIdx === idx ? '2px solid #003B5C' : '1px solid #bbb',
+                                  display: 'inline-block',
+                                  margin: '0 2px',
+                                  boxShadow: dotIdx === idx ? '0 1px 4px rgba(0,0,0,0.10)' : 'none',
+                                  transition: 'background 0.2s, border 0.2s',
+                                  cursor: 'pointer'
+                                }}
+                                onClick={() => setCarouselIdx(prev => ({ ...prev, [club.id]: dotIdx }))}
+                              />
+                            );
+                          });
+                        })()}
+                      </div>
                     </div>
                   )}
                   {Array.isArray(club.tags) && club.tags.length > 0 && (
