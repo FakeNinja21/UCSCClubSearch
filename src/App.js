@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, useNavigate } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 
 import StudentLogin from './pages/StudentLogin.js';
 import ClubLogin from './pages/ClubLogin.js';
@@ -19,25 +19,33 @@ function App() {
   return (
     <div className="App">
       <Routes>
-        {/* DEV DASHBOARD SHORTCUT */}
+        {/* Main landing page */}
         <Route path="/" element={<HomePage />} />
 
-        {/* THE ORIGINAL LANDING PAGE */}
-        {/* Optionally keep /landing for legacy, or remove if not needed */}
+        {/* ADDED: Route for the Dev Dashboard */}
+        <Route path="/dev-dashboard" element={<DevDashboard />} />
 
-        {/* All other routes */}
+        {/* Student Routes */}
         <Route path="/student-login" element={<StudentLogin />} />
         <Route path="/student-signup" element={<StudentSignUp />} />
-        <Route path="/club-login" element={<ClubLogin />} />
-        <Route path="/browse-clubs" element={<BrowseClubs />} />
-        <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
-        <Route path="/club-signup" element={<ClubSignUp />} />
         <Route path="/profile" element={<ProfilePage />} />
+
+        {/* Club Routes */}
+        <Route path="/club-login" element={<ClubLogin />} />
+        <Route path="/club-signup" element={<ClubSignUp />} />
         <Route path="/club-profile" element={<ClubProfilePage />} />
-        <Route path="/club/:clubId" element={<ClubProfilePage />} />
         <Route path="/create-event" element={<CreateEventPage />} />
         <Route path="/your-events" element={<YourEventsPage />} />
+        {/* ADDED: Route for a generic Club Dashboard, points to the profile */}
+        <Route path="/club-dashboard" element={<ClubProfilePage />} />
+
+
+        {/* General Routes */}
+        <Route path="/browse-clubs" element={<BrowseClubs />} />
+        <Route path="/calendar" element={<CalendarPage />} />
+        {/* This route with a parameter should be last to avoid conflicts */}
+        <Route path="/club/:clubId" element={<ClubProfilePage />} />
       </Routes>
     </div>
   );
