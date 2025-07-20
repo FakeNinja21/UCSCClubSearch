@@ -13,28 +13,17 @@ import ProfilePage from './pages/ProfilePage.js';
 import ClubProfilePage from "./pages/ClubProfilePage.js";
 import CreateEventPage from './pages/CreateEventPage.js';
 import YourEventsPage from './pages/YourEventsPage.js';
-import ClubDashboard from './pages/ClubDashboard';
-
-const HomePage = () => {
-  const navigate = useNavigate();
-  return (
-    <div style={{ textAlign: 'center' }}>
-      <h1>Club Connect</h1>
-      <button onClick={() => navigate('/student-login')}>Login as Student</button>
-      <button style={{ marginLeft: '10px' }} onClick={() => navigate('/club-login')}>Login as Club</button>
-    </div>
-  );
-};
+import HomePage from './pages/HomePage.js';
 
 function App() {
   return (
     <div className="App">
       <Routes>
         {/* DEV DASHBOARD SHORTCUT */}
-        <Route path="/" element={<DevDashboard />} />
+        <Route path="/" element={<HomePage />} />
 
         {/* THE ORIGINAL LANDING PAGE */}
-        <Route path="/landing" element={<HomePage />} />
+        {/* Optionally keep /landing for legacy, or remove if not needed */}
 
         {/* All other routes */}
         <Route path="/student-login" element={<StudentLogin />} />
@@ -49,7 +38,6 @@ function App() {
         <Route path="/club/:clubId" element={<ClubProfilePage />} />
         <Route path="/create-event" element={<CreateEventPage />} />
         <Route path="/your-events" element={<YourEventsPage />} />
-        <Route path="/club-dashboard" element={<ClubDashboard />} />
       </Routes>
     </div>
   );
