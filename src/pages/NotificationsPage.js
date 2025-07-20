@@ -143,8 +143,92 @@ export default function NotificationsPage() {
         {filteredEvents.map(event => {
           const alreadySignedUp = Array.isArray(event.attendees) && user && event.attendees.includes(user.uid);
           return (
-            <div key={event.id} /* ... your inline styles ... */ >
-              {/* ... all your event card JSX ... */}
+            <div key={event.id} style={{
+              background: event.bgColor || '#fff',
+              border: '1px solid #e0e0e0',
+              borderRadius: 20,
+              boxShadow: '0 4px 24px rgba(0,0,0,0.10)',
+              padding: 32,
+              width: 350,
+              minHeight: 440,
+              display: 'flex',
+              flexDirection: 'column',
+              fontFamily: 'Inter, Arial, sans-serif',
+              marginBottom: 0,
+              transition: 'box-shadow 0.2s, transform 0.2s',
+              position: 'relative',
+              overflow: 'hidden',
+              cursor: 'pointer',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.boxShadow = '0 8px 32px rgba(0,0,0,0.16)';
+              e.currentTarget.style.transform = 'translateY(-4px) scale(1.02)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.boxShadow = '0 4px 24px rgba(0,0,0,0.10)';
+              e.currentTarget.style.transform = 'none';
+            }}
+            >
+              <h3 style={{ fontSize: 24, fontWeight: 800, color: '#003B5C', marginBottom: 10, textAlign: 'center', letterSpacing: 0.5 }}>{event.eventName}</h3>
+              {event.bannerUrl && (
+                <img src={event.bannerUrl} alt="Event Banner" style={{ width: '100%', maxHeight: 160, objectFit: 'cover', borderRadius: 10, marginBottom: 16, border: '2px solid #FFD700', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }} />
+              )}
+              {Array.isArray(event.tags) && event.tags.length > 0 && (
+                <div style={{ marginBottom: 12, display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
+                  {event.tags.map((tag, idx) => (
+                    <span key={idx} style={{ background: '#e5f0ff', color: '#003B5C', borderRadius: 12, padding: '4px 12px', fontSize: 13, fontWeight: 600, letterSpacing: 0.2 }}>{tag}</span>
+                  ))}
+                </div>
+              )}
+              <div style={{ color: '#003B5C', fontWeight: 700, marginBottom: 6 }}>Hosted by: <span style={{ fontWeight: 400 }}>{event.clubName}</span></div>
+              <div style={{ marginBottom: 10 }}><span style={{ color: '#003B5C', fontWeight: 700 }}>Description:</span> {event.description}</div>
+              <div style={{ marginBottom: 6 }}>
+                <span style={{ color: '#003B5C', fontWeight: 700 }}>Date:</span> {event.date}
+              </div>
+              <div style={{ marginBottom: 6 }}>
+                <span style={{ color: '#003B5C', fontWeight: 700 }}>Start Time:</span> {event.startTime}
+              </div>
+              <div style={{ marginBottom: 6 }}>
+                <span style={{ color: '#003B5C', fontWeight: 700 }}>End Time:</span> {event.endTime}
+              </div>
+              <div style={{ marginBottom: 6 }}>
+                <span style={{ color: '#003B5C', fontWeight: 700 }}>Location:</span> {event.location}
+              </div>
+              {event.zoomLink && (
+                <div style={{ marginBottom: 6 }}>
+                  <span style={{ color: '#003B5C', fontWeight: 700 }}>Zoom Link:</span> <a href={event.zoomLink} target="_blank" rel="noopener noreferrer" style={{ color: '#003B5C', textDecoration: 'underline', wordBreak: 'break-all' }}>{event.zoomLink}</a>
+                </div>
+              )}
+              <div style={{ marginBottom: 6 }}>
+                <span style={{ color: '#003B5C', fontWeight: 700 }}>Who can attend:</span> {event.openTo === 'everyone' ? 'Everyone' : 'Club Members Only'}
+              </div>
+              {/* Sign up/Remove signup button */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (alreadySignedUp) {
+                    handleRemoveSignup(event.id);
+                  } else {
+                    handleSignUp(event.id);
+                  }
+                }}
+                style={{
+                  marginTop: 'auto',
+                  width: '100%',
+                  background: alreadySignedUp ? '#c00' : '#003B5C',
+                  color: '#FFD700',
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: '12px 0',
+                  fontSize: 16,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                  transition: 'background 0.2s, color 0.2s',
+                }}
+              >
+                {alreadySignedUp ? 'Remove Signup' : 'Sign Up for Event'}
+              </button>
             </div>
           );
         })}
