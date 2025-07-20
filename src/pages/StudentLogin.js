@@ -1,15 +1,8 @@
 import React, { useState } from "react";
-import {
-  signInWithEmailAndPassword,
-  signInWithPopup,
-  GoogleAuthProvider,
-} from "firebase/auth";
 import { useNavigate } from "react-router-dom";
-import { auth, db } from "../firebase";
+import { db, signInStudentWithEmail, signInStudentWithGoogle, auth } from "../firebase";
 import { doc, getDoc } from "firebase/firestore";
 import clubLogo from "../assets/club_logo.png";
-
-const provider = new GoogleAuthProvider();
 
 export default function StudentLogin() {
   const [email, setEmail] = useState("");
@@ -29,12 +22,9 @@ export default function StudentLogin() {
         } else if (userData.type === "club") {
           navigate("/club-dashboard");
         } else {
-          // Fallback for unknown types
           navigate("/notifications");
         }
       } else {
-        // No user document exists - this shouldn't happen for new sign-ups
-        // but could happen for older accounts
         navigate("/notifications");
       }
     } catch (err) {
@@ -47,7 +37,7 @@ export default function StudentLogin() {
     e.preventDefault();
     setError("");
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInStudentWithEmail(email, password);
       await handleRedirect(userCredential.user);
     } catch (err) {
       setError(err.message);
@@ -57,17 +47,15 @@ export default function StudentLogin() {
   const handleGoogleLogin = async () => {
     setError("");
     try {
-      const result = await signInWithPopup(auth, provider);
+      const result = await signInStudentWithGoogle();
       const user = result.user;
       if (!user.email.endsWith("@ucsc.edu")) {
         setError("You must use a valid @ucsc.edu email to sign in.");
         return;
       }
-      // Check if user doc exists
       const userDoc = doc(db, "users", user.uid);
       const userSnap = await getDoc(userDoc);
       if (!userSnap.exists()) {
-        // Delete the Auth user and sign out
         await user.delete();
         await auth.signOut();
         setError("You must sign up before logging in with Google.");
