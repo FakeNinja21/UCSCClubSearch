@@ -40,6 +40,16 @@ const CalendarPage = () => {
     return () => unsubscribe();
   }, []);
 
+  // Keep selectedClubs in sync with joinedClubs
+  useEffect(() => {
+    if (!Array.isArray(joinedClubs) || !Array.isArray(selectedClubs)) return;
+    const filteredSelected = selectedClubs.filter(clubName => joinedClubs.includes(clubName));
+    if (filteredSelected.length !== selectedClubs.length) {
+      setSelectedClubs(filteredSelected);
+      saveSelectedClubs(filteredSelected);
+    }
+  }, [joinedClubs]);
+
   // Fetch user data and clubs
   const fetchUserDataAndClubs = async (currentUser) => {
     if (!currentUser) return;
