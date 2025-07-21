@@ -152,6 +152,7 @@ const CalendarPage = () => {
             openTo: event.openTo,
             zoomLink: event.zoomLink,
             clubId: event.clubId, // Add clubId to the event object
+            attendees: event.attendees || [], // <-- Add this line
           };
         });
         setEvents(mapped);
@@ -163,9 +164,16 @@ const CalendarPage = () => {
   }, []);
 
   // Filtering logic
-  let filteredEvents = events;
+  let filteredEvents = events.filter(event => {
+    // Always show if open to everyone
+    if (event.openTo === 'everyone') return true;
+    // Otherwise, only show if the user has joined the club
+    return joinedClubs.includes(event.clubName);
+  });
   if (filter === 'followed') {
-    filteredEvents = events.filter(event => selectedClubs.includes(event.clubName));
+    filteredEvents = filteredEvents.filter(event => selectedClubs.includes(event.clubName));
+  } else if (filter === 'signedup') {
+    filteredEvents = filteredEvents.filter(event => Array.isArray(event.attendees) && user && event.attendees.includes(user.uid));
   }
 
   // Custom event style for color coding
@@ -276,6 +284,9 @@ const CalendarPage = () => {
                 </label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, color: '#003B5C', fontSize: 14, marginBottom: 8 }}>
                   <input type="radio" name="calfilter" checked={filter === 'followed'} onChange={() => handleFilterChange('followed')} /> Followed Clubs
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, color: '#003B5C', fontSize: 14, marginBottom: 8 }}>
+                  <input type="radio" name="calfilter" checked={filter === 'signedup'} onChange={() => handleFilterChange('signedup')} /> Signed Up Events
                 </label>
               </div>
 

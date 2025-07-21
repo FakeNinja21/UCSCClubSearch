@@ -14,6 +14,7 @@ export default function NotificationsPage() {
   const [userTags, setUserTags] = useState([]);
   const [clubs, setClubs] = useState([]);
   const [user, setUser] = useState(null);
+  const [joinedClubs, setJoinedClubs] = useState([]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -35,6 +36,7 @@ export default function NotificationsPage() {
       if (userSnap.exists()) {
         const data = userSnap.data();
         setUserTags(Array.isArray(data.tags) ? data.tags.filter(tag => availableTags.includes(tag)) : []);
+        setJoinedClubs(Array.isArray(data.joinedClubs) ? data.joinedClubs : []);
       }
       const clubsSnapshot = await getDocs(collection(db, 'clubs'));
       setClubs(clubsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
@@ -104,20 +106,13 @@ export default function NotificationsPage() {
     }
   };
 
-  const filteredEvents = filter === 'all'
-    ? events
-    : events.filter(event => {
-        let club = null;
-        if (event.clubId) {
-          club = clubs.find(c => c.id === event.clubId);
-        }
-        if (!club && event.clubName) {
-          club = clubs.find(c => c.name === event.clubName);
-        }
-        const clubTags = Array.isArray(club?.tags) ? club.tags : [];
-        const userTagList = Array.isArray(userTags) ? userTags : [];
-        return clubTags.some(tag => userTagList.includes(tag));
-      });
+  // Filtering logic
+  const filteredEvents = events.filter(event => {
+    // Always show if open to everyone
+    if (event.openTo === 'everyone') return true;
+    // Otherwise, only show if the user has joined the club
+    return joinedClubs && joinedClubs.includes(event.clubName);
+  });
 
   const renderEvents = () => {
     if (loading) {
