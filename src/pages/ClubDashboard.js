@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import ClubNavigation from '../components/ClubNavigation';
 import { db, auth } from '../firebase';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { isEventArchived } from '../utils/eventArchiver';
 
 export default function ClubDashboard() {
   const [events, setEvents] = useState([]);
@@ -9,6 +10,7 @@ export default function ClubDashboard() {
   const [attendeesInfo, setAttendeesInfo] = useState({});
   const [followers, setFollowers] = useState([]);
   const [loadingFollowers, setLoadingFollowers] = useState(true);
+  const [eventFilter, setEventFilter] = useState('active'); // 'active' or 'archived'
   const currentUser = auth.currentUser;
 
   useEffect(() => {
@@ -104,39 +106,53 @@ export default function ClubDashboard() {
           minHeight: 400,
         }}>
           <h2 style={{ color: '#003B5C', fontWeight: 900, fontSize: 28, marginBottom: 18, letterSpacing: 0.5, borderBottom: '2px solid #FFD700', paddingBottom: 8 }}>Event Dashboard</h2>
+          {/* Dropdown filter */}
+          <div style={{ marginBottom: 18 }}>
+            <label style={{ fontWeight: 700, color: '#003B5C', fontSize: 15, marginRight: 10 }}>Show:</label>
+            <select
+              value={eventFilter}
+              onChange={e => setEventFilter(e.target.value)}
+              style={{ padding: '6px 16px', borderRadius: 8, border: '1.5px solid #003B5C', fontSize: 15, color: '#003B5C', fontWeight: 600, background: '#fff', outline: 'none' }}
+            >
+              <option value="active">Active Events</option>
+              <option value="archived">Archived Events</option>
+            </select>
+          </div>
           <div style={{ marginTop: 24 }}>
             {loadingEvents ? (
               <p>Loading events...</p>
             ) : events.length === 0 ? (
               <p>No events found.</p>
             ) : (
-              events.map(event => (
-                <div key={event.id} style={{
-                  marginBottom: 32,
-                  padding: 20,
-                  background: '#f8f9fa',
-                  borderRadius: 12,
-                  boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-                  borderLeft: '6px solid #003B5C',
-                }}>
-                  <h3 style={{ marginBottom: 8, color: '#003B5C', fontWeight: 800, fontSize: 22 }}>{event.eventName || 'Untitled Event'}</h3>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 8 }}>
-                    <span style={{ background: '#FFD700', color: '#003B5C', borderRadius: 8, padding: '4px 12px', fontWeight: 700, fontSize: 15 }}>Signups: {Array.isArray(event.attendees) ? event.attendees.length : 0}</span>
+              events
+                .filter(event => eventFilter === 'active' ? !isEventArchived(event) : isEventArchived(event))
+                .map(event => (
+                  <div key={event.id} style={{
+                    marginBottom: 32,
+                    padding: 20,
+                    background: '#f8f9fa',
+                    borderRadius: 12,
+                    boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+                    borderLeft: '6px solid #003B5C',
+                  }}>
+                    <h3 style={{ marginBottom: 8, color: '#003B5C', fontWeight: 800, fontSize: 22 }}>{event.eventName || 'Untitled Event'}</h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 8 }}>
+                      <span style={{ background: '#FFD700', color: '#003B5C', borderRadius: 8, padding: '4px 12px', fontWeight: 700, fontSize: 15 }}>Signups: {Array.isArray(event.attendees) ? event.attendees.length : 0}</span>
+                    </div>
+                    <div style={{ marginTop: 8 }}>
+                      <strong>Attendees:</strong>
+                      {attendeesInfo[event.id] && attendeesInfo[event.id].length > 0 ? (
+                        <ul style={{ marginTop: 4, marginLeft: 0, paddingLeft: 18 }}>
+                          {attendeesInfo[event.id].map((user, idx) => (
+                            <li key={idx} style={{ marginBottom: 2 }}>{user.email} <span style={{ color: '#888', fontSize: 14 }}>(Major: {user.major})</span></li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p style={{ margin: 0, color: '#888' }}>No attendees yet.</p>
+                      )}
+                    </div>
                   </div>
-                  <div style={{ marginTop: 8 }}>
-                    <strong>Attendees:</strong>
-                    {attendeesInfo[event.id] && attendeesInfo[event.id].length > 0 ? (
-                      <ul style={{ marginTop: 4, marginLeft: 0, paddingLeft: 18 }}>
-                        {attendeesInfo[event.id].map((user, idx) => (
-                          <li key={idx} style={{ marginBottom: 2 }}>{user.email} <span style={{ color: '#888', fontSize: 14 }}>(Major: {user.major})</span></li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p style={{ margin: 0, color: '#888' }}>No attendees yet.</p>
-                    )}
-                  </div>
-                </div>
-              ))
+                ))
             )}
           </div>
         </div>

@@ -16,6 +16,7 @@ import YourEventsPage from './pages/YourEventsPage.js';
 import HomePage from './pages/HomePage.js';
 // ⬇️ ADDED: Import the correct dashboard component
 import ClubDashboard from './pages/ClubDashboard.js';
+import ClubEventCalendar from './pages/ClubEventCalendar';
 
 function App() {
   return (
@@ -41,6 +42,7 @@ function App() {
         <Route path="/your-events" element={<YourEventsPage />} />
         {/* ⬇️ FIXED: This route now points to the correct dashboard component */}
         <Route path="/club-dashboard" element={<ClubDashboard />} />
+        <Route path="/club-calendar" element={<ClubEventCalendar />} />
 
 
         {/* General Routes */}
