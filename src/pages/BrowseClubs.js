@@ -315,7 +315,17 @@ function BrowseClubs() {
                   {/* Expandable Description */}
                   {expanded[club.id] && (
                     <div style={{ marginTop: 18, color: '#003B5C', fontSize: 15, background: '#fffbe5', borderRadius: 12, padding: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
-                      <div><b>Description:</b> {club.description}</div>
+                      <div style={{ marginBottom: 8 }}><b>Description:</b> {club.description}</div>
+                      {club.email && (
+                        <div style={{ marginBottom: 8 }}>
+                          <b>Email:</b> <a href={`mailto:${club.email}`} style={{ color: '#003B5C', textDecoration: 'underline' }}>{club.email}</a>
+                        </div>
+                      )}
+                      {club.instagram && (
+                        <div style={{ marginBottom: 8 }}>
+                          <b>Instagram:</b> <a href={`https://instagram.com/${club.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" style={{ color: '#003B5C', textDecoration: 'underline' }}>{club.instagram}</a>
+                        </div>
+                      )}
                     </div>
                   )}
                   {/* Join/Unfollow Club Button */}

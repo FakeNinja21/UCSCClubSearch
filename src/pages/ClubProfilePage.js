@@ -4,6 +4,7 @@ import { auth } from '../firebase';
 import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
 import ClubNavigation from '../components/ClubNavigation';
 import availableTags from '../data/availableTags';
+import { isClubProfileComplete } from '../utils/profileCompletion';
 
 const ClubProfilePage = () => {
   const db = getFirestore();
@@ -17,6 +18,7 @@ const ClubProfilePage = () => {
   });
   const [newTag, setNewTag] = useState('');
   const [images, setImages] = useState([]);
+  const [profileComplete, setProfileComplete] = useState(false);
   const currentUser = auth.currentUser;
   const maxWords = 150;
   const wordCount = clubData.description.trim() === '' ? 0 : clubData.description.trim().split(/\s+/).length;
@@ -37,6 +39,9 @@ const ClubProfilePage = () => {
             imageUrls: data.imageUrls || [],
           });
           setImages(data.imageUrls || []);
+          
+          // Don't check profile completion on load - only check after saving
+          setProfileComplete(false);
         }
       }
     };
@@ -100,6 +105,10 @@ const ClubProfilePage = () => {
         imageUrls: images, // ensure we save the Cloudinary URLs
       });
       alert('Changes saved!');
+      
+      // Recheck profile completion after saving
+      const complete = await isClubProfileComplete(currentUser.uid);
+      setProfileComplete(complete);
     }
   };
 
@@ -109,6 +118,30 @@ const ClubProfilePage = () => {
       <div style={{ background: '#f7f7fa', minHeight: '100vh', paddingTop: 80 }}>
         <div style={{ maxWidth: 500, margin: '0 auto', background: '#fff', borderRadius: 16, boxShadow: '0 4px 24px rgba(0,0,0,0.08)', padding: 40, fontFamily: 'sans-serif' }}>
           <h2 style={{ color: '#003B5C', marginBottom: 24, textAlign: 'center' }}>📘 Club Profile</h2>
+          {!profileComplete && (
+            <div style={{
+              backgroundColor: '#fff3cd',
+              border: '1px solid #ffeaa7',
+              borderRadius: '8px',
+              padding: '1rem',
+              marginBottom: '1rem',
+              color: '#856404'
+            }}>
+              <strong>⚠️ Profile Incomplete</strong><br />
+              Please complete the following information to access all features of the app:
+              <ul style={{ margin: '0.5rem 0', paddingLeft: '1.5rem' }}>
+                {!clubData.name.trim() && <li>Add your club name</li>}
+                {!clubData.email.trim() && <li>Add your club email</li>}
+                {!clubData.instagram.trim() && <li>Add your club Instagram</li>}
+                {(!clubData.description || clubData.description.trim().split(/\s+/).length < 10) && 
+                  <li>Add a description with at least 10 words</li>}
+                {(!clubData.imageUrls || clubData.imageUrls.length === 0) && 
+                  <li>Upload at least one image</li>}
+                {(!clubData.tags || clubData.tags.length === 0) && 
+                  <li>Add at least one tag</li>}
+              </ul>
+            </div>
+          )}
           <label style={labelStyle}>Club Name</label>
           <input name="name" value={clubData.name} onChange={handleChange} style={inputStyle} />
           <label style={labelStyle}>Upload Images</label>

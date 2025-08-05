@@ -17,6 +17,7 @@ import HomePage from './pages/HomePage.js';
 // ⬇️ ADDED: Import the correct dashboard component
 import ClubDashboard from './pages/ClubDashboard.js';
 import ClubEventCalendar from './pages/ClubEventCalendar';
+import ProfileCompletionGuard from './components/ProfileCompletionGuard';
 
 function App() {
   return (
@@ -31,23 +32,49 @@ function App() {
         {/* Student Routes */}
         <Route path="/student-login" element={<StudentLogin />} />
         <Route path="/student-signup" element={<StudentSignUp />} />
-        <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
-
+        
         {/* Club Routes */}
         <Route path="/club-login" element={<ClubLogin />} />
         <Route path="/club-signup" element={<ClubSignUp />} />
         <Route path="/club-profile" element={<ClubProfilePage />} />
-        <Route path="/create-event" element={<CreateEventPage />} />
-        <Route path="/your-events" element={<YourEventsPage />} />
-        {/* ⬇️ FIXED: This route now points to the correct dashboard component */}
-        <Route path="/club-dashboard" element={<ClubDashboard />} />
-        <Route path="/club-calendar" element={<ClubEventCalendar />} />
 
-
-        {/* General Routes */}
-        <Route path="/browse-clubs" element={<BrowseClubs />} />
-        <Route path="/calendar" element={<CalendarPage />} />
+        {/* Protected Routes - Require Profile Completion */}
+        <Route path="/notifications" element={
+          <ProfileCompletionGuard>
+            <NotificationsPage />
+          </ProfileCompletionGuard>
+        } />
+        <Route path="/create-event" element={
+          <ProfileCompletionGuard>
+            <CreateEventPage />
+          </ProfileCompletionGuard>
+        } />
+        <Route path="/your-events" element={
+          <ProfileCompletionGuard>
+            <YourEventsPage />
+          </ProfileCompletionGuard>
+        } />
+        <Route path="/club-dashboard" element={
+          <ProfileCompletionGuard>
+            <ClubDashboard />
+          </ProfileCompletionGuard>
+        } />
+        <Route path="/club-calendar" element={
+          <ProfileCompletionGuard>
+            <ClubEventCalendar />
+          </ProfileCompletionGuard>
+        } />
+        <Route path="/browse-clubs" element={
+          <ProfileCompletionGuard>
+            <BrowseClubs />
+          </ProfileCompletionGuard>
+        } />
+        <Route path="/calendar" element={
+          <ProfileCompletionGuard>
+            <CalendarPage />
+          </ProfileCompletionGuard>
+        } />
         {/* This route with a parameter should be last to avoid conflicts */}
         <Route path="/club/:clubId" element={<ClubProfilePage />} />
       </Routes>

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { db, signInStudentWithEmail, signInStudentWithGoogle, auth } from "../firebase";
 import { doc, getDoc } from "firebase/firestore";
 import clubLogo from "../assets/club_logo.png";
+import { isStudentProfileComplete } from "../utils/profileCompletion";
 
 export default function StudentLogin() {
   const [email, setEmail] = useState("");
@@ -18,7 +19,13 @@ export default function StudentLogin() {
       if (userSnap.exists()) {
         const userData = userSnap.data();
         if (userData.type === "student") {
-          navigate("/notifications");
+          // Check if profile is complete
+          const profileComplete = await isStudentProfileComplete(user.uid);
+          if (profileComplete) {
+            navigate("/notifications");
+          } else {
+            navigate("/profile");
+          }
         } else if (userData.type === "club") {
           navigate("/club-dashboard");
         } else {

@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { auth, db } from "../firebase";
 import { doc, getDoc } from "firebase/firestore";
 import clubLogo from "../assets/club_logo.png";
+import { isClubProfileComplete } from "../utils/profileCompletion";
 
 const provider = new GoogleAuthProvider();
 
@@ -23,7 +24,13 @@ export default function ClubLogin() {
       const clubSnap = await getDoc(clubDoc);
 
       if (clubSnap.exists()) {
-        navigate("/club-profile");
+        // Check if profile is complete
+        const profileComplete = await isClubProfileComplete(user.uid);
+        if (profileComplete) {
+          navigate("/club-dashboard");
+        } else {
+          navigate("/club-profile");
+        }
       } else {
         navigate("/notifications"); // fallback in case data is missing
       }

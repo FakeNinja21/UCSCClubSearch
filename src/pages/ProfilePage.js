@@ -4,6 +4,7 @@ import { doc, getDoc, updateDoc } from "firebase/firestore";
 import NavBar from "../components/StudentNavigation";
 import availableTags from "../data/availableTags";
 import { onAuthStateChanged } from "firebase/auth";
+import { isStudentProfileComplete } from "../utils/profileCompletion";
 
 const styles = {
   container: {
@@ -33,6 +34,7 @@ function ProfilePage() {
     const [joinedClubs, setJoinedClubs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [profileComplete, setProfileComplete] = useState(false);
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -46,16 +48,19 @@ function ProfilePage() {
                     const userRef = doc(db, "users", user.uid);
                     const userSnap = await getDoc(userRef);
                     if (userSnap.exists()) {
-                        const data = userSnap.data();
-                        setUserData(data);
-                        setName(data.name || "");
-                        setMajor(data.major || "");
-                        setInterests(data.tags || []);
-                        setNotificationPreference(data.notificationPreference || 'all');
-                        setJoinedClubs(Array.isArray(data.joinedClubs) ? data.joinedClubs : []);
-                    } else {
-                        setError("User profile not found.");
-                    }
+                                            const data = userSnap.data();
+                    setUserData(data);
+                    setName(data.name || "");
+                    setMajor(data.major || "");
+                    setInterests(data.tags || []);
+                    setNotificationPreference(data.notificationPreference || 'all');
+                    setJoinedClubs(Array.isArray(data.joinedClubs) ? data.joinedClubs : []);
+                    
+                    // Don't check profile completion on load - only check after saving
+                    setProfileComplete(false);
+                } else {
+                    setError("User profile not found.");
+                }
                 } catch (err) {
                     setError("Failed to load profile.");
                 } finally {
@@ -79,6 +84,10 @@ function ProfilePage() {
                     notificationPreference: notificationPreference,
                 });
                 alert("Profile saved successfully!");
+                
+                // Recheck profile completion after saving
+                const complete = await isStudentProfileComplete(user.uid);
+                setProfileComplete(complete);
             } catch (err) {
                 alert("Error saving profile. Please try again.");
                 console.error("Error updating document: ", err);
@@ -96,6 +105,23 @@ function ProfilePage() {
             <NavBar />
             <div style={styles.container}>
                 <h2>👤 Profile</h2>
+                {!profileComplete && (
+                    <div style={{
+                        backgroundColor: '#fff3cd',
+                        border: '1px solid #ffeaa7',
+                        borderRadius: '8px',
+                        padding: '1rem',
+                        marginBottom: '1rem',
+                        color: '#856404'
+                    }}>
+                        <strong>⚠️ Profile Incomplete</strong><br />
+                        Please complete the following information to access all features of the app:
+                        <ul style={{ margin: '0.5rem 0', paddingLeft: '1.5rem' }}>
+                            {!name.trim() && <li>Add your name</li>}
+                            {!major.trim() && <li>Add your major</li>}
+                        </ul>
+                    </div>
+                )}
                 <div style={styles.section}>
                     <span style={styles.label}>Email:</span> {auth.currentUser.email}
                 </div>

@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { auth, db } from "../firebase";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import clubLogo from "../assets/club_logo.png";
+import { isStudentProfileComplete } from "../utils/profileCompletion";
 
 const provider = new GoogleAuthProvider();
 
@@ -39,7 +40,7 @@ export default function StudentSignUp() {
         email,
         type: "student"
       });
-      navigate("/notifications");
+      navigate("/profile");
     } catch (err) {
       setError(err.message);
     }
@@ -65,7 +66,7 @@ export default function StudentSignUp() {
           type: "student"
         });
       }
-      navigate("/notifications");
+      navigate("/profile");
     } catch (err) {
       setError("Google Sign Up failed: " + err.message);
     }
