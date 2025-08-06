@@ -4,6 +4,7 @@ import { collection, getDocs, doc, getDoc, updateDoc, arrayUnion, arrayRemove } 
 import { auth, db } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import availableTags from '../data/availableTags';
+import { Container, Card, Button, Badge, Form, Row, Col, Carousel } from 'react-bootstrap';
 
 function BrowseClubs() {
   const [clubs, setClubs] = useState([]);
@@ -136,246 +137,175 @@ function BrowseClubs() {
   };
 
   return (
-    <div style={{ background: '#f7f7fa', minHeight: '100vh', fontFamily: 'Inter, Arial, sans-serif' }}>
-      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000 }}>
-        <StudentNavigation />
-      </div>
-      <div style={{ paddingTop: 80, maxWidth: 1400, margin: '0 auto', paddingLeft: 16, paddingRight: 16 }}>
-        <h2 style={{ color: '#003B5C', fontWeight: 900, fontSize: 36, margin: '32px 0 24px 0', letterSpacing: 0.5 }}>Browse Clubs</h2>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 24, marginBottom: 32, flexWrap: 'wrap' }}>
-          <div style={{ maxWidth: 400, flex: 1 }}>
-            <input
+    <div className="min-vh-100" style={{ background: 'linear-gradient(135deg, #f7f7fa 60%, #e5f0ff 100%)' }}>
+      <StudentNavigation />
+      <Container className="py-4" style={{ marginTop: '80px' }}>
+        <h2 className="text-primary fw-bold mb-4">Browse Clubs</h2>
+        
+        {/* Search and Filter Section */}
+        <Row className="mb-4 g-3">
+          <Col md={6}>
+            <Form.Control
               type="text"
               placeholder="Search clubs..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              style={{ width: '100%', padding: '12px', borderRadius: 10, border: '1.5px solid #003B5C', fontSize: 16, background: '#fff', color: '#003B5C', fontWeight: 500, outline: 'none', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}
+              className="form-control-lg"
             />
-          </div>
-          <div style={{ minWidth: 220, flex: 1, marginLeft: 16 }}>
-            <label htmlFor="tag-filter" style={{ color: '#003B5C', fontWeight: 700, marginRight: 8, fontSize: 16 }}>Filter by tag:</label>
-            <select
-              id="tag-filter"
-              value=""
-              onChange={e => { if (e.target.value) handleAddTag(e.target.value); }}
-              style={{ padding: '10px 18px', borderRadius: 10, border: '1.5px solid #003B5C', fontSize: 16, background: '#fff', color: '#003B5C', fontWeight: 600, outline: 'none', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', marginRight: 8 }}
-            >
-              <option value="">Select tag</option>
-              {availableTags.filter(tag => !selectedTags.includes(tag)).map((tag, idx) => (
-                <option key={idx} value={tag}>{tag}</option>
-              ))}
-            </select>
+          </Col>
+          <Col md={6}>
+            <div className="d-flex align-items-center gap-2">
+              <Form.Label className="fw-bold mb-0">Filter by tag:</Form.Label>
+              <Form.Select
+                value=""
+                onChange={e => { if (e.target.value) handleAddTag(e.target.value); }}
+                className="flex-grow-1"
+              >
+                <option value="">Select tag</option>
+                {availableTags.filter(tag => !selectedTags.includes(tag)).map((tag, idx) => (
+                  <option key={idx} value={tag}>{tag}</option>
+                ))}
+              </Form.Select>
+            </div>
+          </Col>
+        </Row>
+
+        {/* Selected Tags */}
+        {selectedTags.length > 0 && (
+          <div className="mb-4">
             {selectedTags.map((tag, idx) => (
-              <span key={idx} style={{ background: tagColorMap[tag] || '#e5f0ff', color: '#003B5C', borderRadius: 12, padding: '4px 12px', fontSize: 13, fontWeight: 600, marginRight: 6, display: 'inline-flex', alignItems: 'center', marginTop: 4 }}>
+              <Badge 
+                key={idx} 
+                bg="secondary" 
+                className="me-2 mb-2"
+                style={{ backgroundColor: tagColorMap[tag] || '#6c757d', color: '#003B5C' }}
+              >
                 {tag}
-                <span onClick={() => handleRemoveTag(tag)} style={{ marginLeft: 6, cursor: 'pointer', fontWeight: 900, color: '#c00', fontSize: 15 }}>&times;</span>
-              </span>
+                <Button 
+                  variant="link" 
+                  className="text-decoration-none p-0 ms-2"
+                  onClick={() => handleRemoveTag(tag)}
+                  style={{ color: '#dc3545' }}
+                >
+                  ×
+                </Button>
+              </Badge>
             ))}
           </div>
-        </div>
+        )}
+
         {loading ? (
-          <p>Loading clubs...</p>
+          <div className="text-center py-5">
+            <div className="spinner-border text-primary" role="status">
+              <span className="visually-hidden">Loading...</span>
+            </div>
+            <p className="mt-3">Loading clubs...</p>
+          </div>
         ) : (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
-            gap: 56,
-            justifyItems: 'center',
-            alignItems: 'start',
-            maxWidth: 1200,
-            margin: '0 auto',
-            paddingBottom: 40,
-          }}>
+          <Row className="g-4">
             {filteredClubs.map(club => {
               const imgs = Array.isArray(club.imageUrls) ? club.imageUrls : [];
-              const idx = carouselIdx[club.id] || 0;
               const firstTag = Array.isArray(club.tags) && club.tags.length > 0 ? club.tags[0] : availableTags[0];
               const bgColor = tagColorMap[firstTag] || '#fff';
+              
               return (
-                <div key={club.id} style={{
-                  background: bgColor,
-                  border: '1.5px solid #e0e0e0',
-                  borderRadius: 24,
-                  boxShadow: '0 6px 32px rgba(0,0,0,0.10)',
-                  padding: 36,
-                  width: 370,
-                  minHeight: imgs.length > 0 ? 320 : 180,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  fontFamily: 'Inter, Arial, sans-serif',
-                  marginBottom: 0,
-                  transition: 'box-shadow 0.2s, transform 0.2s',
-                  position: 'relative',
-                  overflow: 'hidden',
-                  cursor: 'pointer',
-                }}
-                onClick={() => handleExpand(club.id)}
-                >
-                  <h3 style={{ fontSize: 26, fontWeight: 900, color: '#003B5C', marginBottom: 14, textAlign: 'center', letterSpacing: 0.5 }}>{club.name}</h3>
-                  {imgs.length > 0 && (
-                    <div style={{ position: 'relative', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
-                      <button
-                        onClick={e => { e.stopPropagation(); handleCarousel(club.id, -1, imgs.length); }}
-                        style={{
-                          position: 'absolute',
-                          left: 0,
-                          top: '50%',
-                          transform: 'translateY(-50%)',
-                          background: '#fff',
-                          border: '1.5px solid #FFD700',
-                          borderRadius: '50%',
-                          width: 32,
-                          height: 32,
-                          fontSize: 18,
-                          color: '#003B5C',
-                          cursor: 'pointer',
-                          zIndex: 2,
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          opacity: 0.95
-                        }}
-                      >&lt;</button>
-                      <img src={imgs[idx]} alt="Club" style={{ width: '100%', maxHeight: 160, objectFit: 'cover', borderRadius: 10, border: '2px solid #FFD700', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }} />
-                      <button
-                        onClick={e => { e.stopPropagation(); handleCarousel(club.id, 1, imgs.length); }}
-                        style={{
-                          position: 'absolute',
-                          right: 0,
-                          top: '50%',
-                          transform: 'translateY(-50%)',
-                          background: '#fff',
-                          border: '1.5px solid #FFD700',
-                          borderRadius: '50%',
-                          width: 32,
-                          height: 32,
-                          fontSize: 18,
-                          color: '#003B5C',
-                          cursor: 'pointer',
-                          zIndex: 2,
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          opacity: 0.95
-                        }}
-                      >&gt;</button>
-                      {/* Instagram-style dots */}
-                      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 10 }}>
-                        {(() => {
-                          const maxDots = 5;
-                          const total = imgs.length;
-                          let start = 0;
-                          let end = total;
-                          if (total > maxDots) {
-                            if (idx <= 2) {
-                              start = 0;
-                              end = maxDots;
-                            } else if (idx >= total - 3) {
-                              start = total - maxDots;
-                              end = total;
-                            } else {
-                              start = idx - 2;
-                              end = idx + 3;
-                            }
-                          }
-                          return Array.from({ length: Math.min(total, maxDots) }, (_, i) => {
-                            const dotIdx = total > maxDots ? start + i : i;
-                            return (
-                              <span
-                                key={dotIdx}
-                                style={{
-                                  width: 10,
-                                  height: 10,
-                                  borderRadius: '50%',
-                                  background: dotIdx === idx ? '#fff' : 'rgba(255,255,255,0.5)',
-                                  border: dotIdx === idx ? '2px solid #003B5C' : '1px solid #bbb',
-                                  display: 'inline-block',
-                                  margin: '0 2px',
-                                  boxShadow: dotIdx === idx ? '0 1px 4px rgba(0,0,0,0.10)' : 'none',
-                                  transition: 'background 0.2s, border 0.2s',
-                                  cursor: 'pointer'
-                                }}
-                                onClick={e => { e.stopPropagation(); setCarouselIdx(prev => ({ ...prev, [club.id]: dotIdx })); }}
-                              />
-                            );
-                          });
-                        })()}
-                      </div>
-                    </div>
-                  )}
-                  {Array.isArray(club.tags) && club.tags.length > 0 && (
-                    <div style={{ marginBottom: 14, display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
-                      {club.tags.map((tag, idx) => (
-                        <span key={idx} style={{ background: tagColorMap[tag] || '#e5f0ff', color: '#003B5C', borderRadius: 14, padding: '5px 14px', fontSize: 14, fontWeight: 700, letterSpacing: 0.2 }}>{tag}</span>
-                      ))}
-                    </div>
-                  )}
-                  {/* Expandable Description */}
-                  {expanded[club.id] && (
-                    <div style={{ marginTop: 18, color: '#003B5C', fontSize: 15, background: '#fffbe5', borderRadius: 12, padding: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
-                      <div style={{ marginBottom: 8 }}><b>Description:</b> {club.description}</div>
-                      {club.email && (
-                        <div style={{ marginBottom: 8 }}>
-                          <b>Email:</b> <a href={`mailto:${club.email}`} style={{ color: '#003B5C', textDecoration: 'underline' }}>{club.email}</a>
+                <Col key={club.id} lg={4} md={6}>
+                  <Card 
+                    className="h-100 shadow-sm border-0" 
+                    style={{ backgroundColor: bgColor }}
+                    onClick={() => handleExpand(club.id)}
+                  >
+                    <Card.Body className="p-4">
+                      <Card.Title className="text-center fw-bold text-primary mb-3">
+                        {club.name}
+                      </Card.Title>
+                      
+                      {imgs.length > 0 && (
+                        <div className="mb-3">
+                          <Carousel 
+                            activeIndex={carouselIdx[club.id] || 0}
+                            onSelect={(index) => setCarouselIdx(prev => ({ ...prev, [club.id]: index }))}
+                            indicators={false}
+                            controls={true}
+                            className="mb-3"
+                          >
+                            {imgs.map((img, idx) => (
+                              <Carousel.Item key={idx}>
+                                <img 
+                                  src={img} 
+                                  alt={`Club ${idx + 1}`} 
+                                  className="d-block w-100 rounded"
+                                  style={{ height: '200px', objectFit: 'cover' }}
+                                />
+                              </Carousel.Item>
+                            ))}
+                          </Carousel>
                         </div>
                       )}
-                      {club.instagram && (
-                        <div style={{ marginBottom: 8 }}>
-                          <b>Instagram:</b> <a href={`https://instagram.com/${club.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" style={{ color: '#003B5C', textDecoration: 'underline' }}>{club.instagram}</a>
+                      
+                      {Array.isArray(club.tags) && club.tags.length > 0 && (
+                        <div className="mb-3 text-center">
+                          {club.tags.map((tag, idx) => (
+                            <Badge 
+                              key={idx} 
+                              bg="light" 
+                              className="me-1 mb-1"
+                              style={{ 
+                                backgroundColor: tagColorMap[tag] || '#f8f9fa', 
+                                color: '#003B5C' 
+                              }}
+                            >
+                              {tag}
+                            </Badge>
+                          ))}
                         </div>
                       )}
-                    </div>
-                  )}
-                  {/* Join/Unfollow Club Button */}
-                  {joinedClubs.includes(club.name) ? (
-                    <button
-                      onClick={e => { e.stopPropagation(); handleUnfollowClub(club.name); }}
-                      style={{
-                        marginTop: 18,
-                        width: '100%',
-                        background: '#fffbe5',
-                        color: '#c00',
-                        border: '1.5px solid #c00',
-                        borderRadius: 10,
-                        padding: '14px 0',
-                        fontSize: 18,
-                        fontWeight: 800,
-                        cursor: 'pointer',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-                        transition: 'background 0.2s, color 0.2s',
-                      }}
-                    >
-                      Unfollow
-                    </button>
-                  ) : (
-                    <button
-                      onClick={e => { e.stopPropagation(); handleJoinClub(club.name); }}
-                      style={{
-                        marginTop: 18,
-                        width: '100%',
-                        background: '#003B5C',
-                        color: '#FFD700',
-                        border: 'none',
-                        borderRadius: 10,
-                        padding: '14px 0',
-                        fontSize: 18,
-                        fontWeight: 800,
-                        cursor: 'pointer',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-                        transition: 'background 0.2s, color 0.2s',
-                      }}
-                    >
-                      Follow
-                    </button>
-                  )}
-                </div>
+                      
+                      {/* Expandable Description */}
+                      {expanded[club.id] && (
+                        <div className="mb-3 p-3 bg-light rounded">
+                          <div className="mb-2">
+                            <strong>Description:</strong> {club.description}
+                          </div>
+                          {club.email && (
+                            <div className="mb-2">
+                              <strong>Email:</strong> <a href={`mailto:${club.email}`} className="text-decoration-none">{club.email}</a>
+                            </div>
+                          )}
+                          {club.instagram && (
+                            <div className="mb-2">
+                              <strong>Instagram:</strong> <a href={`https://instagram.com/${club.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-decoration-none">{club.instagram}</a>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* Join/Unfollow Club Button */}
+                      {joinedClubs.includes(club.name) ? (
+                        <Button
+                          variant="outline-danger"
+                          className="w-100"
+                          onClick={e => { e.stopPropagation(); handleUnfollowClub(club.name); }}
+                        >
+                          Unfollow
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="primary"
+                          className="w-100"
+                          onClick={e => { e.stopPropagation(); handleJoinClub(club.name); }}
+                        >
+                          Follow
+                        </Button>
+                      )}
+                    </Card.Body>
+                  </Card>
+                </Col>
               );
             })}
-          </div>
+          </Row>
         )}
-      </div>
+      </Container>
     </div>
   );
 }

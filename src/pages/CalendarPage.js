@@ -2,11 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { Calendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
-import { getFirestore, collection, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { getFirestore, collection, getDocs, doc, getDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { auth } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import StudentNavigation from '../components/StudentNavigation';
 import { getEvents } from '../firebase';
+import { Container, Card, Button, Form, Modal, Row, Col, Badge, Offcanvas, Alert } from 'react-bootstrap';
 
 const localizer = momentLocalizer(moment);
 
@@ -22,6 +23,9 @@ const CalendarPage = () => {
   const [selectedClubs, setSelectedClubs] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [user, setUser] = useState(null);
+  const [signupLoading, setSignupLoading] = useState(false);
+  const [signupError, setSignupError] = useState('');
+  const [signupSuccess, setSignupSuccess] = useState('');
 
   // Listen for authentication state changes
   useEffect(() => {
@@ -100,27 +104,23 @@ const CalendarPage = () => {
     }
   };
 
-  // Handle filter change
   const handleFilterChange = (newFilter) => {
     setFilter(newFilter);
     saveFilterPreference(newFilter);
   };
 
-  // Handle club selection
   const handleClubToggle = (clubName) => {
-    const newSelectedClubs = selectedClubs.includes(clubName)
+    const newSelected = selectedClubs.includes(clubName)
       ? selectedClubs.filter(name => name !== clubName)
       : [...selectedClubs, clubName];
-    
-    setSelectedClubs(newSelectedClubs);
-    saveSelectedClubs(newSelectedClubs);
+    setSelectedClubs(newSelected);
+    saveSelectedClubs(newSelected);
   };
 
-  // Handle select all/none
   const handleSelectAll = () => {
-    const allClubNames = clubs.map(club => club.name);
-    setSelectedClubs(allClubNames);
-    saveSelectedClubs(allClubNames);
+    const allJoined = clubs.filter(club => joinedClubs.includes(club.name)).map(club => club.name);
+    setSelectedClubs(allJoined);
+    saveSelectedClubs(allJoined);
   };
 
   const handleSelectNone = () => {
@@ -128,34 +128,32 @@ const CalendarPage = () => {
     saveSelectedClubs([]);
   };
 
+  // Fetch events with signup status
   useEffect(() => {
     const fetchEvents = async () => {
       setLoading(true);
       try {
-        const eventList = await getEvents();
-        // Map events to calendar format
-        const mapped = eventList.map(event => {
-          // Combine date and time fields into JS Date objects
+        const eventsSnapshot = await getDocs(collection(db, 'events'));
+        const eventsList = eventsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        // Transform events for calendar display
+        const calendarEvents = eventsList.map(event => {
           const start = new Date(`${event.date}T${event.startTime}`);
           const end = new Date(`${event.date}T${event.endTime}`);
+          
           return {
-            id: event.id,
-            title: event.eventName,
+            ...event,
             start,
             end,
+            title: event.eventName,
             desc: event.description,
-            clubName: event.clubName,
-            location: event.location,
-            tags: event.tags,
-            bgColor: event.bgColor,
-            bannerUrl: event.bannerUrl,
-            openTo: event.openTo,
-            zoomLink: event.zoomLink,
-            clubId: event.clubId, // Add clubId to the event object
-            attendees: event.attendees || [], // <-- Add this line
+            attendees: event.attendees || []
           };
         });
-        setEvents(mapped);
+        
+        setEvents(calendarEvents);
+      } catch (error) {
+        console.error('Error fetching events:', error);
       } finally {
         setLoading(false);
       }
@@ -163,25 +161,111 @@ const CalendarPage = () => {
     fetchEvents();
   }, []);
 
-  // Filtering logic
-  let filteredEvents = events.filter(event => {
-    // Always show if open to everyone
-    if (event.openTo === 'everyone') return true;
-    // Otherwise, only show if the user has joined the club
-    return joinedClubs.includes(event.clubName);
+  // Filter events based on selected filter
+  const filteredEvents = events.filter(event => {
+    if (filter === 'all') return true;
+    if (filter === 'followed') {
+      return selectedClubs.includes(event.clubName);
+    }
+    if (filter === 'signedup') {
+      return event.attendees && event.attendees.includes(user?.uid);
+    }
+    return true;
   });
-  if (filter === 'followed') {
-    filteredEvents = filteredEvents.filter(event => selectedClubs.includes(event.clubName));
-  } else if (filter === 'signedup') {
-    filteredEvents = filteredEvents.filter(event => Array.isArray(event.attendees) && user && event.attendees.includes(user.uid));
-  }
+
+  // Handle event signup/signout
+  const handleEventSignup = async (eventId, isSigningUp = true) => {
+    if (!user) return;
+    
+    // Find the event to check eligibility
+    const event = events.find(e => e.id === eventId);
+    if (!event) return;
+    
+    // Check if user is eligible to sign up
+    if (isSigningUp && !isUserEligibleForEvent(event)) {
+      setSignupError('You are not eligible to sign up for this event. Please join the club first or check the event requirements.');
+      return;
+    }
+    
+    setSignupLoading(true);
+    setSignupError('');
+    setSignupSuccess('');
+    
+    try {
+      const eventRef = doc(db, 'events', eventId);
+      
+      if (isSigningUp) {
+        await updateDoc(eventRef, {
+          attendees: arrayUnion(user.uid)
+        });
+        setSignupSuccess('Successfully signed up for the event!');
+      } else {
+        await updateDoc(eventRef, {
+          attendees: arrayRemove(user.uid)
+        });
+        setSignupSuccess('Successfully removed signup for the event!');
+      }
+      
+      // Update the local events state
+      setEvents(prevEvents => 
+        prevEvents.map(event => 
+          event.id === eventId 
+            ? {
+                ...event,
+                attendees: isSigningUp 
+                  ? [...(event.attendees || []), user.uid]
+                  : (event.attendees || []).filter(id => id !== user.uid)
+              }
+            : event
+        )
+      );
+      
+      // Update selected event if it's the same one
+      if (selectedEvent && selectedEvent.id === eventId) {
+        setSelectedEvent(prev => ({
+          ...prev,
+          attendees: isSigningUp 
+            ? [...(prev.attendees || []), user.uid]
+            : (prev.attendees || []).filter(id => id !== user.uid)
+        }));
+      }
+      
+    } catch (error) {
+      console.error('Error updating event signup:', error);
+      setSignupError('Failed to update signup. Please try again.');
+    } finally {
+      setSignupLoading(false);
+    }
+  };
+
+  // Check if user is eligible to sign up for an event
+  const isUserEligibleForEvent = (event) => {
+    // If event is open to everyone, user is eligible
+    if (event.openTo === 'everyone') {
+      return true;
+    }
+    
+    // If event is for club members only, check if user has joined the club
+    if (event.openTo === 'members') {
+      return joinedClubs.includes(event.clubName);
+    }
+    
+    // Default to not eligible if openTo is not recognized
+    return false;
+  };
+
+  // Check if user is signed up for an event
+  const isUserSignedUp = (event) => {
+    return event.attendees && event.attendees.includes(user?.uid);
+  };
 
   // Custom event style for color coding
   const eventStyleGetter = (event) => {
+    const isSignedUp = isUserSignedUp(event);
     return {
       style: {
-        backgroundColor: event.bgColor || '#e5f0ff',
-        color: '#003B5C',
+        backgroundColor: isSignedUp ? '#28a745' : (event.bgColor || '#e5f0ff'),
+        color: isSignedUp ? '#fff' : '#003B5C',
         borderRadius: '8px',
         border: 'none',
         fontWeight: 600,
@@ -191,198 +275,266 @@ const CalendarPage = () => {
     };
   };
 
-  // Modal for event details
-  const EventModal = ({ event, onClose }) => (
-    <div style={{
-      position: 'fixed',
-      top: 0, left: 0, right: 0, bottom: 0,
-      background: 'rgba(0,0,0,0.25)',
-      zIndex: 3000,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-    }}>
-      <div style={{
-        background: '#fff',
-        borderRadius: 16,
-        boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
-        padding: 32,
-        minWidth: 340,
-        maxWidth: 420,
-        position: 'relative',
-        fontFamily: 'Inter, Arial, sans-serif',
-      }}>
-        <button onClick={onClose} style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', fontSize: 22, color: '#003B5C', cursor: 'pointer', fontWeight: 700 }}>&times;</button>
-        <h2 style={{ color: '#003B5C', fontWeight: 800, fontSize: 24, marginBottom: 10, textAlign: 'center' }}>{event.title}</h2>
-        {event.bannerUrl && (
-          <img src={event.bannerUrl} alt="Event Banner" style={{ width: '100%', maxHeight: 160, objectFit: 'cover', borderRadius: 10, marginBottom: 16, border: '2px solid #FFD700', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }} />
-        )}
-        <div style={{ color: '#003B5C', fontWeight: 700, marginBottom: 6, textAlign: 'center' }}>Hosted by: <span style={{ fontWeight: 400 }}>{event.clubName}</span></div>
-        <div style={{ marginBottom: 10, color: '#003B5C', fontWeight: 500 }}><span style={{ fontWeight: 700 }}>Description:</span> {event.desc}</div>
-        <div style={{ marginBottom: 6 }}><span style={{ color: '#003B5C', fontWeight: 700 }}>Date:</span> {event.start.toLocaleDateString()}</div>
-        <div style={{ marginBottom: 6 }}><span style={{ color: '#003B5C', fontWeight: 700 }}>Start Time:</span> {event.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-        <div style={{ marginBottom: 6 }}><span style={{ color: '#003B5C', fontWeight: 700 }}>End Time:</span> {event.end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-        <div style={{ marginBottom: 6 }}><span style={{ color: '#003B5C', fontWeight: 700 }}>Location:</span> {event.location}</div>
-        {event.zoomLink && (
-          <div style={{ marginBottom: 6 }}><span style={{ color: '#003B5C', fontWeight: 700 }}>Zoom Link:</span> <a href={event.zoomLink} target="_blank" rel="noopener noreferrer" style={{ color: '#003B5C', textDecoration: 'underline', wordBreak: 'break-all' }}>{event.zoomLink}</a></div>
-        )}
-        <div style={{ marginBottom: 6 }}><span style={{ color: '#003B5C', fontWeight: 700 }}>Who can attend:</span> {event.openTo === 'everyone' ? 'Everyone' : 'Club Members Only'}</div>
-        {Array.isArray(event.tags) && event.tags.length > 0 && (
-          <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
-            {event.tags.map((tag, idx) => (
-              <span key={idx} style={{ background: '#e5f0ff', color: '#003B5C', borderRadius: 12, padding: '4px 12px', fontSize: 13, fontWeight: 600, letterSpacing: 0.2 }}>{tag}</span>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-
   return (
-    <div style={{ background: '#f7f7fa', minHeight: '100vh', fontFamily: 'Inter, Arial, sans-serif' }}>
-      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000 }}>
-        <StudentNavigation />
-      </div>
-      <div style={{ paddingTop: 80, maxWidth: 1400, margin: '0 auto', paddingLeft: 16, paddingRight: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '32px 0 0 0' }}>
-          <h2 style={{ color: '#003B5C', fontWeight: 900, fontSize: 36, letterSpacing: 0.5 }}>📅 Club Events Calendar</h2>
-          <button 
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            style={{
-              background: '#003B5C',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 8,
-              padding: '8px 16px',
-              cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: 14
-            }}
-          >
-            {sidebarOpen ? 'Hide' : 'Show'} Club Filters
-          </button>
-        </div>
-        
-        <div style={{ display: 'flex', gap: 24, flexDirection: 'row-reverse' }}>
-          {/* Clubs Filter Sidebar - now on the right */}
-          {sidebarOpen && (
-            <div style={{
-              width: 280,
-              background: '#fff',
-              borderRadius: 16,
-              padding: 24,
-              height: 'fit-content',
-              boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
-              position: 'sticky',
-              top: 100
-            }}>
-              <h3 style={{ color: '#003B5C', fontWeight: 800, fontSize: 20, marginBottom: 16 }}>Clubs Joined</h3>
-              {/* Filter Options */}
-              <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, color: '#003B5C', fontSize: 14, marginBottom: 8 }}>
-                  <input type="radio" name="calfilter" checked={filter === 'all'} onChange={() => handleFilterChange('all')} /> All Clubs
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, color: '#003B5C', fontSize: 14, marginBottom: 8 }}>
-                  <input type="radio" name="calfilter" checked={filter === 'followed'} onChange={() => handleFilterChange('followed')} /> Followed Clubs
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, color: '#003B5C', fontSize: 14, marginBottom: 8 }}>
-                  <input type="radio" name="calfilter" checked={filter === 'signedup'} onChange={() => handleFilterChange('signedup')} /> Signed Up Events
-                </label>
-              </div>
-
-              {/* Select All/None buttons and club checkboxes only for Selected Clubs */}
-              {filter === 'followed' && (
-                <>
-                  <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-                    <button 
-                      onClick={handleSelectAll}
-                      style={{
-                        background: '#e5f0ff',
-                        color: '#003B5C',
-                        border: 'none',
-                        borderRadius: 6,
-                        padding: '6px 12px',
-                        cursor: 'pointer',
-                        fontWeight: 600,
-                        fontSize: 12
-                      }}
-                    >
-                      Select All
-                    </button>
-                    <button 
-                      onClick={handleSelectNone}
-                      style={{
-                        background: '#e5f0ff',
-                        color: '#003B5C',
-                        border: 'none',
-                        borderRadius: 6,
-                        padding: '6px 12px',
-                        cursor: 'pointer',
-                        fontWeight: 600,
-                        fontSize: 12
-                      }}
-                    >
-                      Select None
-                    </button>
-                  </div>
-                  {/* Club checkboxes - only show joined clubs */}
-                  <div style={{ maxHeight: 400, overflowY: 'auto' }}>
-                    {clubs.filter(club => joinedClubs.includes(club.name)).map((club) => (
-                      <label key={club.id} style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 12,
-                        padding: '8px 0',
-                        cursor: 'pointer',
-                        borderBottom: '1px solid #f0f0f0',
-                        fontSize: 14,
-                        fontWeight: 500,
-                        color: '#003B5C'
-                      }}>
-                        <input
-                          type="checkbox"
-                          checked={selectedClubs.includes(club.name)}
-                          onChange={() => handleClubToggle(club.name)}
-                          style={{
-                            width: 16,
-                            height: 16,
-                            accentColor: '#003B5C'
-                          }}
-                        />
-                        <span style={{ flex: 1 }}>{club.name}</span>
-                      </label>
-                    ))}
-                  </div>
-                </>
-              )}
-              <div style={{ marginTop: 16, padding: 12, background: '#f8f9fa', borderRadius: 8, fontSize: 12, color: '#666' }}>
-                <strong>Selected:</strong> {selectedClubs.length} of {clubs.filter(club => joinedClubs.includes(club.name)).length} clubs
-              </div>
+    <div className="min-vh-100" style={{ background: '#f7f7fa' }}>
+      <StudentNavigation />
+      <Container className="py-4" style={{ marginTop: '80px' }}>
+        <Row className="mb-4">
+          <Col>
+            <div className="d-flex justify-content-between align-items-center">
+              <h2 className="text-primary fw-bold mb-0">📅 Club Events Calendar</h2>
+              <Button 
+                variant="primary"
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="d-lg-none"
+              >
+                {sidebarOpen ? 'Hide' : 'Show'} Filters
+              </Button>
             </div>
-          )}
-
-          {/* Calendar */}
-          <div style={{ flex: 1 }}>
-            {loading ? <p>Loading events...</p> : (
-              <Calendar
-                localizer={localizer}
-                events={filteredEvents}
-                startAccessor="start"
-                endAccessor="end"
-                style={{ height: 700, background: '#fff', borderRadius: 16, boxShadow: '0 4px 24px rgba(0,0,0,0.08)', padding: 24 }}
-                eventPropGetter={eventStyleGetter}
-                popup
-                views={['month', 'week', 'day']}
-                components={{ event: (props) => <span>{props.title}</span>, eventWrapper: ({ event, children }) => <div title={event.desc}>{children}</div> }}
-                tooltipAccessor={null}
-                onSelectEvent={event => setSelectedEvent(event)}
-              />
-            )}
-          </div>
-        </div>
+          </Col>
+        </Row>
         
-        {selectedEvent && <EventModal event={selectedEvent} onClose={() => setSelectedEvent(null)} />}
-      </div>
+        <Row>
+          {/* Calendar */}
+          <Col lg={sidebarOpen ? 8 : 12}>
+            {loading ? (
+              <div className="text-center py-5">
+                <div className="spinner-border text-primary" role="status">
+                  <span className="visually-hidden">Loading...</span>
+                </div>
+                <p className="mt-3">Loading events...</p>
+              </div>
+            ) : (
+              <Card className="shadow-sm border-0">
+                <Card.Body className="p-0">
+                  <Calendar
+                    localizer={localizer}
+                    events={filteredEvents}
+                    startAccessor="start"
+                    endAccessor="end"
+                    style={{ height: 700 }}
+                    eventPropGetter={eventStyleGetter}
+                    popup
+                    views={['month', 'week', 'day']}
+                    components={{ 
+                      event: (props) => <span>{props.title}</span>, 
+                      eventWrapper: ({ event, children }) => <div title={event.desc}>{children}</div> 
+                    }}
+                    tooltipAccessor={null}
+                    onSelectEvent={event => setSelectedEvent(event)}
+                  />
+                </Card.Body>
+              </Card>
+            )}
+          </Col>
+
+          {/* Clubs Filter Sidebar */}
+          {sidebarOpen && (
+            <Col lg={4}>
+              <Card className="shadow-sm border-0 sticky-top" style={{ top: '100px' }}>
+                <Card.Header className="bg-primary text-white">
+                  <h3 className="mb-0 fw-bold">Clubs Joined</h3>
+                </Card.Header>
+                <Card.Body>
+                  {/* Filter Options */}
+                  <div className="mb-4">
+                    <Form.Label className="fw-bold">Filter Options:</Form.Label>
+                    <div className="d-flex flex-column gap-2">
+                      <Form.Check
+                        type="radio"
+                        name="calfilter"
+                        id="filter-all"
+                        checked={filter === 'all'}
+                        onChange={() => handleFilterChange('all')}
+                        label="All Clubs"
+                      />
+                      <Form.Check
+                        type="radio"
+                        name="calfilter"
+                        id="filter-followed"
+                        checked={filter === 'followed'}
+                        onChange={() => handleFilterChange('followed')}
+                        label="Followed Clubs"
+                      />
+                      <Form.Check
+                        type="radio"
+                        name="calfilter"
+                        id="filter-signedup"
+                        checked={filter === 'signedup'}
+                        onChange={() => handleFilterChange('signedup')}
+                        label="Signed Up Events"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Select All/None buttons and club checkboxes only for Selected Clubs */}
+                  {filter === 'followed' && (
+                    <>
+                      <div className="d-flex gap-2 mb-3">
+                        <Button variant="outline-primary" size="sm" onClick={handleSelectAll}>
+                          Select All
+                        </Button>
+                        <Button variant="outline-secondary" size="sm" onClick={handleSelectNone}>
+                          Select None
+                        </Button>
+                      </div>
+                      
+                      {/* Club checkboxes - only show joined clubs */}
+                      <div className="mb-3" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                        {clubs.filter(club => joinedClubs.includes(club.name)).map((club) => (
+                          <Form.Check
+                            key={club.id}
+                            type="checkbox"
+                            id={`club-${club.id}`}
+                            checked={selectedClubs.includes(club.name)}
+                            onChange={() => handleClubToggle(club.name)}
+                            label={club.name}
+                            className="mb-2"
+                          />
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  
+                  <div className="p-3 bg-light rounded">
+                    <small className="text-muted">
+                      <strong>Selected:</strong> {selectedClubs.length} of {clubs.filter(club => joinedClubs.includes(club.name)).length} clubs
+                    </small>
+                  </div>
+                </Card.Body>
+              </Card>
+            </Col>
+          )}
+        </Row>
+        
+        {/* Event Modal */}
+        <Modal show={selectedEvent !== null} onHide={() => setSelectedEvent(null)} size="lg">
+          {selectedEvent && (
+            <>
+              <Modal.Header closeButton>
+                <Modal.Title className="text-primary fw-bold">{selectedEvent.title}</Modal.Title>
+              </Modal.Header>
+              <Modal.Body>
+                {signupSuccess && (
+                  <Alert variant="success" className="mb-3">
+                    {signupSuccess}
+                  </Alert>
+                )}
+                
+                {signupError && (
+                  <Alert variant="danger" className="mb-3">
+                    {signupError}
+                  </Alert>
+                )}
+                
+                {selectedEvent.bannerUrl && (
+                  <img 
+                    src={selectedEvent.bannerUrl} 
+                    alt="Event Banner" 
+                    className="img-fluid rounded mb-3"
+                    style={{ maxHeight: '200px', objectFit: 'cover' }}
+                  />
+                )}
+                
+                <div className="mb-3">
+                  <strong>Hosted by:</strong> {selectedEvent.clubName}
+                </div>
+                
+                <div className="mb-3">
+                  <strong>Description:</strong> {selectedEvent.desc}
+                </div>
+                
+                <Row>
+                  <Col md={6}>
+                    <div className="mb-2">
+                      <strong>Date:</strong> {selectedEvent.start.toLocaleDateString()}
+                    </div>
+                    <div className="mb-2">
+                      <strong>Start Time:</strong> {selectedEvent.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                    <div className="mb-2">
+                      <strong>End Time:</strong> {selectedEvent.end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  </Col>
+                  <Col md={6}>
+                    <div className="mb-2">
+                      <strong>Location:</strong> {selectedEvent.location}
+                    </div>
+                    {selectedEvent.zoomLink && (
+                      <div className="mb-2">
+                        <strong>Zoom Link:</strong> <a href={selectedEvent.zoomLink} target="_blank" rel="noopener noreferrer" className="text-decoration-none">{selectedEvent.zoomLink}</a>
+                      </div>
+                    )}
+                    <div className="mb-2">
+                      <strong>Who can attend:</strong> {selectedEvent.openTo === 'everyone' ? 'Everyone' : 'Club Members Only'}
+                    </div>
+                    <div className="mb-2">
+                      <strong>Attendees:</strong> {(selectedEvent.attendees || []).length} people signed up
+                    </div>
+                  </Col>
+                </Row>
+                
+                {Array.isArray(selectedEvent.tags) && selectedEvent.tags.length > 0 && (
+                  <div className="mt-3">
+                    <strong>Tags:</strong>
+                    <div className="d-flex flex-wrap gap-2 mt-2">
+                      {selectedEvent.tags.map((tag, idx) => (
+                        <Badge key={idx} bg="light" text="dark">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </Modal.Body>
+              <Modal.Footer>
+                {isUserSignedUp(selectedEvent) ? (
+                  <Button 
+                    variant="outline-danger" 
+                    onClick={() => handleEventSignup(selectedEvent.id, false)}
+                    disabled={signupLoading}
+                  >
+                    {signupLoading ? 'Removing...' : 'Remove Signup'}
+                  </Button>
+                ) : isUserEligibleForEvent(selectedEvent) ? (
+                  <Button 
+                    variant="success" 
+                    onClick={() => handleEventSignup(selectedEvent.id, true)}
+                    disabled={signupLoading}
+                  >
+                    {signupLoading ? 'Signing up...' : 'Sign Up for Event'}
+                  </Button>
+                ) : (
+                  <div className="text-center w-100">
+                    <p className="text-muted mb-2">
+                      {selectedEvent.openTo === 'members' 
+                        ? `This event is for ${selectedEvent.clubName} members only. Join the club to sign up!`
+                        : 'You are not eligible to sign up for this event.'
+                      }
+                    </p>
+                    {selectedEvent.openTo === 'members' && (
+                      <Button 
+                        variant="outline-primary" 
+                        size="sm"
+                        onClick={() => {
+                          setSelectedEvent(null);
+                          // Navigate to browse clubs to join the club
+                          window.location.href = '/browse-clubs';
+                        }}
+                      >
+                        Browse Clubs
+                      </Button>
+                    )}
+                  </div>
+                )}
+                <Button variant="secondary" onClick={() => setSelectedEvent(null)}>
+                  Close
+                </Button>
+              </Modal.Footer>
+            </>
+          )}
+        </Modal>
+      </Container>
     </div>
   );
 };

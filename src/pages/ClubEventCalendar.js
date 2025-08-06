@@ -6,6 +6,7 @@ import ClubNavigation from '../components/ClubNavigation';
 import { db, auth } from '../firebase';
 import { collection, getDocs } from 'firebase/firestore';
 import availableTags from '../data/availableTags';
+import { Container, Card, Button, Form, Row, Col, Badge } from 'react-bootstrap';
 
 const localizer = momentLocalizer(moment);
 
@@ -81,131 +82,193 @@ export default function ClubEventCalendar() {
   }, []);
 
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #f7f7fa 60%, #e5f0ff 100%)', fontFamily: 'Inter, Arial, sans-serif', paddingTop: 70 }}>
+    <div className="min-vh-100" style={{ background: 'linear-gradient(135deg, #f7f7fa 60%, #e5f0ff 100%)' }}>
       <ClubNavigation />
-      <div style={{ display: 'flex', gap: 32, maxWidth: 1400, margin: '0 auto', alignItems: 'flex-start', padding: '40px 24px 0 24px' }}>
-        {/* Calendar */}
-        <div style={{ flex: 1.5, background: '#fff', borderRadius: 18, boxShadow: '0 4px 24px rgba(0,0,0,0.08)', padding: 32, minHeight: 600 }}>
-          <h2 style={{ color: '#003B5C', fontWeight: 900, fontSize: 32, marginBottom: 24, letterSpacing: 0.5 }}>Club Events Calendar</h2>
-          <Calendar
-            localizer={localizer}
-            events={filteredEvents.map(ev => ({
-              ...ev,
-              title: ev.eventName,
-              start: new Date(`${ev.date}T${ev.startTime}`),
-              end: new Date(`${ev.date}T${ev.endTime}`),
-            }))}
-            startAccessor="start"
-            endAccessor="end"
-            style={{ height: 700, background: '#fff', borderRadius: 16, boxShadow: '0 4px 24px rgba(0,0,0,0.08)', padding: 24 }}
-            eventPropGetter={() => ({ style: { backgroundColor: '#e5f0ff', color: '#003B5C', borderRadius: '8px', border: 'none', fontWeight: 600, fontSize: 15 } })}
-            popup
-            views={['month', 'week', 'day', 'agenda']}
-            components={{ event: (props) => <span>{props.title}</span> }}
-          />
-        </div>
-        {/* Sidebar */}
-        <div style={{ flex: 0.7, background: '#fff', borderRadius: 18, boxShadow: '0 4px 24px rgba(0,0,0,0.08)', padding: 32, minWidth: 320 }}>
-          <h3 style={{ color: '#003B5C', fontWeight: 800, fontSize: 22, marginBottom: 18 }}>Filters</h3>
-          {/* All Events */}
-          <div style={{ marginBottom: 18 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, color: '#003B5C', fontSize: 16 }}>
-              <input type="radio" checked={filter === 'all'} onChange={() => setFilter('all')} /> All Events
-            </label>
-          </div>
-          {/* By Club */}
-          <div style={{ marginBottom: 18 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, color: '#003B5C', fontSize: 16 }}>
-              <input type="radio" checked={filter === 'club'} onChange={() => setFilter('club')} /> By Club
-            </label>
-            {filter === 'club' && (
-              <div ref={searchRef} style={{ position: 'relative', marginTop: 8 }}>
-                <input
-                  type="text"
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  placeholder="Search clubs..."
-                  style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1.5px solid #003B5C', fontSize: 16, color: '#003B5C', fontWeight: 500, background: '#fff', marginBottom: 0 }}
-                  onFocus={() => setShowDropdown(filteredClubs.length > 0)}
-                  autoComplete="off"
-                />
-                {showDropdown && (
-                  <div style={{ background: '#fff', border: '1.5px solid #003B5C', borderRadius: 8, marginTop: 2, maxHeight: 180, overflowY: 'auto', position: 'absolute', zIndex: 2000, width: '100%' }}>
-                    {filteredClubs.map(club => (
-                      <div
-                        key={club.id}
-                        style={{ padding: '8px 14px', cursor: 'pointer', color: '#003B5C', fontWeight: 600, fontSize: 15, borderBottom: '1px solid #f0f0f0' }}
-                        onClick={() => { setSelectedClubs([club.id]); setSearch(''); setShowDropdown(false); }}
-                      >
-                        {club.name}
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {/* Selected club as tag */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-                  {selectedClubs.map(cid => {
-                    const club = clubs.find(c => c.id === cid);
-                    if (!club) return null;
-                    return (
-                      <span key={cid} style={{ background: '#e5f0ff', color: '#003B5C', borderRadius: 12, padding: '4px 12px', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', cursor: 'pointer' }}
-                        onMouseEnter={e => e.currentTarget.style.background = '#FFD700'}
-                        onMouseLeave={e => e.currentTarget.style.background = '#e5f0ff'}
-                      >
-                        {club.name}
-                        <span onClick={() => setSelectedClubs([])} style={{ marginLeft: 8, color: '#c00', fontWeight: 900, fontSize: 16, cursor: 'pointer' }}>×</span>
-                      </span>
-                    );
+      <Container fluid className="py-4" style={{ marginTop: '80px' }}>
+        <Row>
+          {/* Calendar */}
+          <Col lg={8}>
+            <Card className="shadow-sm border-0">
+              <Card.Header className="bg-primary text-white">
+                <h2 className="mb-0 fw-bold">Club Events Calendar</h2>
+              </Card.Header>
+              <Card.Body className="p-0">
+                <Calendar
+                  localizer={localizer}
+                  events={filteredEvents.map(ev => ({
+                    ...ev,
+                    title: ev.eventName,
+                    start: new Date(`${ev.date}T${ev.startTime}`),
+                    end: new Date(`${ev.date}T${ev.endTime}`),
+                  }))}
+                  startAccessor="start"
+                  endAccessor="end"
+                  style={{ height: 700 }}
+                  eventPropGetter={() => ({ 
+                    style: { 
+                      backgroundColor: '#e5f0ff', 
+                      color: '#003B5C', 
+                      borderRadius: '8px', 
+                      border: 'none', 
+                      fontWeight: 600, 
+                      fontSize: 15 
+                    } 
                   })}
-                </div>
-              </div>
-            )}
-          </div>
-          {/* By Tag */}
-          <div style={{ marginBottom: 18 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, color: '#003B5C', fontSize: 16 }}>
-              <input type="radio" checked={filter === 'tag'} onChange={() => setFilter('tag')} /> By Tag
-            </label>
-            {filter === 'tag' && (
-              <div style={{ marginTop: 8 }}>
-                <div style={{ position: 'relative' }}>
-                  <select
-                    multiple
-                    value={selectedTags}
-                    onChange={e => {
-                      const options = Array.from(e.target.selectedOptions, option => option.value);
-                      setSelectedTags(options);
-                    }}
-                    style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1.5px solid #003B5C', fontSize: 16, color: '#003B5C', fontWeight: 500, background: '#fff', marginBottom: 0, minHeight: 80 }}
-                  >
-                    {tags.map(tag => (
-                      <option key={tag} value={tag}>{tag}</option>
-                    ))}
-                  </select>
-                </div>
-                {/* Selected tags as tags */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-                  {selectedTags.map(tag => (
-                    <span key={tag} style={{ background: '#e5f0ff', color: '#003B5C', borderRadius: 12, padding: '4px 12px', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', cursor: 'pointer' }}
-                      onMouseEnter={e => e.currentTarget.style.background = '#FFD700'}
-                      onMouseLeave={e => e.currentTarget.style.background = '#e5f0ff'}
-                    >
-                      {tag}
-                      <span onClick={() => removeTag(tag)} style={{ marginLeft: 8, color: '#c00', fontWeight: 900, fontSize: 16, cursor: 'pointer' }}>×</span>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-          {/* My Events */}
-          <div style={{ marginBottom: 18 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, color: '#003B5C', fontSize: 16 }}>
-              <input type="radio" checked={filter === 'my'} onChange={() => setFilter('my')} /> My Events
-            </label>
-          </div>
-        </div>
-      </div>
+                  popup
+                  views={['month', 'week', 'day', 'agenda']}
+                  components={{ event: (props) => <span>{props.title}</span> }}
+                />
+              </Card.Body>
+            </Card>
+          </Col>
+
+          {/* Sidebar */}
+          <Col lg={4}>
+            <Card className="shadow-sm border-0">
+              <Card.Header className="bg-primary text-white">
+                <h3 className="mb-0 fw-bold">Filters</h3>
+              </Card.Header>
+              <Card.Body>
+                {/* All Events */}
+                <Form.Group className="mb-3">
+                  <Form.Check
+                    type="radio"
+                    name="filter"
+                    id="filter-all"
+                    checked={filter === 'all'}
+                    onChange={() => setFilter('all')}
+                    label="All Events"
+                    className="fw-bold"
+                  />
+                </Form.Group>
+
+                {/* By Club */}
+                <Form.Group className="mb-3">
+                  <Form.Check
+                    type="radio"
+                    name="filter"
+                    id="filter-club"
+                    checked={filter === 'club'}
+                    onChange={() => setFilter('club')}
+                    label="By Club"
+                    className="fw-bold"
+                  />
+                  {filter === 'club' && (
+                    <div ref={searchRef} className="mt-2">
+                      <Form.Control
+                        type="text"
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        placeholder="Search clubs..."
+                        onFocus={() => setShowDropdown(filteredClubs.length > 0)}
+                        autoComplete="off"
+                      />
+                      {showDropdown && (
+                        <div className="position-absolute bg-white border rounded mt-1 w-100" style={{ zIndex: 2000, maxHeight: '180px', overflowY: 'auto' }}>
+                          {filteredClubs.map(club => (
+                            <div
+                              key={club.id}
+                              className="p-2 border-bottom cursor-pointer"
+                              onClick={() => { setSelectedClubs([club.id]); setSearch(''); setShowDropdown(false); }}
+                            >
+                              {club.name}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {/* Selected club as badge */}
+                      <div className="d-flex flex-wrap gap-2 mt-2">
+                        {selectedClubs.map(cid => {
+                          const club = clubs.find(c => c.id === cid);
+                          if (!club) return null;
+                          return (
+                            <Badge 
+                              key={cid} 
+                              bg="primary" 
+                              className="d-flex align-items-center"
+                            >
+                              {club.name}
+                              <Button
+                                variant="link"
+                                className="text-white text-decoration-none p-0 ms-2"
+                                onClick={() => setSelectedClubs([])}
+                              >
+                                ×
+                              </Button>
+                            </Badge>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </Form.Group>
+
+                {/* By Tag */}
+                <Form.Group className="mb-3">
+                  <Form.Check
+                    type="radio"
+                    name="filter"
+                    id="filter-tag"
+                    checked={filter === 'tag'}
+                    onChange={() => setFilter('tag')}
+                    label="By Tag"
+                    className="fw-bold"
+                  />
+                  {filter === 'tag' && (
+                    <div className="mt-2">
+                      <Form.Select
+                        multiple
+                        value={selectedTags}
+                        onChange={e => {
+                          const options = Array.from(e.target.selectedOptions, option => option.value);
+                          setSelectedTags(options);
+                        }}
+                        style={{ minHeight: '80px' }}
+                      >
+                        {tags.map(tag => (
+                          <option key={tag} value={tag}>{tag}</option>
+                        ))}
+                      </Form.Select>
+                      {/* Selected tags as badges */}
+                      <div className="d-flex flex-wrap gap-2 mt-2">
+                        {selectedTags.map(tag => (
+                          <Badge 
+                            key={tag} 
+                            bg="primary" 
+                            className="d-flex align-items-center"
+                          >
+                            {tag}
+                            <Button
+                              variant="link"
+                              className="text-white text-decoration-none p-0 ms-2"
+                              onClick={() => removeTag(tag)}
+                            >
+                              ×
+                            </Button>
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </Form.Group>
+
+                {/* My Events */}
+                <Form.Group className="mb-3">
+                  <Form.Check
+                    type="radio"
+                    name="filter"
+                    id="filter-my"
+                    checked={filter === 'my'}
+                    onChange={() => setFilter('my')}
+                    label="My Events"
+                    className="fw-bold"
+                  />
+                </Form.Group>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+      </Container>
     </div>
   );
 } 

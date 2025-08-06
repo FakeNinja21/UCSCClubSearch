@@ -1,5 +1,6 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
+import 'bootstrap/dist/css/bootstrap.min.css';
 
 import StudentLogin from './pages/StudentLogin.js';
 import ClubLogin from './pages/ClubLogin.js';
@@ -12,7 +13,7 @@ import StudentSignUp from './pages/StudentSignUp.js';
 import ProfilePage from './pages/ProfilePage.js';
 import ClubProfilePage from "./pages/ClubProfilePage.js";
 import CreateEventPage from './pages/CreateEventPage.js';
-import YourEventsPage from './pages/YourEventsPage.js';
+
 import HomePage from './pages/HomePage.js';
 // ⬇️ ADDED: Import the correct dashboard component
 import ClubDashboard from './pages/ClubDashboard.js';
@@ -50,11 +51,7 @@ function App() {
             <CreateEventPage />
           </ProfileCompletionGuard>
         } />
-        <Route path="/your-events" element={
-          <ProfileCompletionGuard>
-            <YourEventsPage />
-          </ProfileCompletionGuard>
-        } />
+
         <Route path="/club-dashboard" element={
           <ProfileCompletionGuard>
             <ClubDashboard />

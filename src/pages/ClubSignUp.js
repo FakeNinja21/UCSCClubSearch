@@ -9,6 +9,7 @@ import { auth, db } from "../firebase";
 import { doc, setDoc } from "firebase/firestore";
 import clubLogo from "../assets/club_logo.png";
 import approvedClubEmails from "../data/approvedClubEmails";
+import { Container, Card, Button, Form, Alert, Row, Col } from 'react-bootstrap';
 
 const provider = new GoogleAuthProvider();
 
@@ -80,116 +81,90 @@ export default function ClubSignUp() {
   };
 
   return (
-    <div style={styles.page}>
-      <div style={styles.card}>
-        <img src={clubLogo} alt="Club Logo" style={styles.logo} />
-        <h2>Club Sign Up</h2>
+    <div className="min-vh-100 d-flex align-items-center justify-content-center" 
+         style={{ background: 'linear-gradient(135deg, #f7f7fa 60%, #e5f0ff 100%)' }}>
+      <Container className="py-4" style={{ marginTop: '80px' }}>
+        <Row className="justify-content-center">
+          <Col md={6} lg={4}>
+            <Card className="shadow-lg border-0">
+              <Card.Body className="p-5 text-center">
+                <img src={clubLogo} alt="Club Logo" className="img-fluid mb-4" style={{ maxWidth: '120px' }} />
+                <h2 className="text-primary fw-bold mb-4">Club Sign Up</h2>
 
-        <button onClick={handleGoogleSignUp} style={styles.googleBtn}>
-          Sign up with Google
-        </button>
+                <Button 
+                  variant="outline-warning" 
+                  size="lg" 
+                  className="w-100 mb-3"
+                  onClick={handleGoogleSignUp}
+                >
+                  <i className="fab fa-google me-2"></i>
+                  Sign up with Google
+                </Button>
 
-        <hr style={{ margin: "1rem 0" }} />
+                <hr className="my-4" />
 
-        <form onSubmit={handleEmailSignUp} style={styles.form}>
-          <input
-            type="email"
-            placeholder="Club Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            style={styles.input}
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            style={styles.input}
-          />
-          <input
-            type="password"
-            placeholder="Confirm Password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            required
-            style={styles.input}
-          />
-          {error && <p style={{ color: "red" }}>{error}</p>}
-          <button type="submit" style={styles.primaryBtn}>
-            Create Account
-          </button>
-        </form>
+                <Form onSubmit={handleEmailSignUp}>
+                  <Form.Group className="mb-3">
+                    <Form.Control
+                      type="email"
+                      placeholder="Club Email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      size="lg"
+                    />
+                  </Form.Group>
 
-        <button
-          type="button"
-          onClick={() => navigate("/club-login")}
-          style={styles.linkBtn}
-        >
-          Already have an account? Log in here
-        </button>
-      </div>
+                  <Form.Group className="mb-3">
+                    <Form.Control
+                      type="password"
+                      placeholder="Password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      size="lg"
+                    />
+                  </Form.Group>
+
+                  <Form.Group className="mb-3">
+                    <Form.Control
+                      type="password"
+                      placeholder="Confirm Password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      required
+                      size="lg"
+                    />
+                  </Form.Group>
+
+                  {error && (
+                    <Alert variant="danger" className="mb-3">
+                      {error}
+                    </Alert>
+                  )}
+
+                  <Button 
+                    type="submit" 
+                    variant="warning" 
+                    size="lg" 
+                    className="w-100 mb-3"
+                  >
+                    Sign Up
+                  </Button>
+                </Form>
+
+                <Button
+                  variant="link"
+                  onClick={() => navigate("/club-login")}
+                  className="text-decoration-none"
+                >
+                  Already have an account? Log in here
+                </Button>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+      </Container>
     </div>
   );
 }
-
-const styles = {
-  page: {
-    minHeight: "100vh",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#f8f9fa",
-  },
-  card: {
-    width: "100%",
-    maxWidth: "400px",
-    background: "white",
-    padding: "2rem",
-    borderRadius: "8px",
-    boxShadow: "0 0 20px rgba(0,0,0,0.1)",
-    textAlign: "center",
-  },
-  logo: {
-    width: "120px",
-    marginBottom: "1rem",
-  },
-  googleBtn: {
-    backgroundColor: "#4285F4",
-    color: "white",
-    border: "none",
-    padding: "10px",
-    borderRadius: "4px",
-    width: "100%",
-    marginBottom: "1rem",
-    cursor: "pointer",
-  },
-  form: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.75rem",
-  },
-  input: {
-    padding: "10px",
-    borderRadius: "4px",
-    border: "1px solid #ccc",
-  },
-  primaryBtn: {
-    backgroundColor: "#007bff",
-    color: "white",
-    border: "none",
-    padding: "10px",
-    borderRadius: "4px",
-    cursor: "pointer",
-  },
-  linkBtn: {
-    background: "none",
-    border: "none",
-    color: "#007bff",
-    textDecoration: "underline",
-    cursor: "pointer",
-    marginTop: "10px",
-    fontSize: "14px",
-  },
-};

@@ -5,6 +5,7 @@ import { getEventsForStudent, auth, db } from '../firebase';
 import { doc, getDoc, collection, getDocs, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import availableTags from '../data/availableTags';
+import { Container, Card, Button, Form, Row, Col, Badge, Alert } from 'react-bootstrap';
 
 export default function NotificationsPage() {
   const [events, setEvents] = useState([]);
@@ -44,7 +45,6 @@ export default function NotificationsPage() {
       console.error('Error fetching user tags and clubs:', error);
     }
   };
-
 
   useEffect(() => {
     if (!user) {
@@ -116,150 +116,143 @@ export default function NotificationsPage() {
 
   const renderEvents = () => {
     if (loading) {
-      return <p>Loading notifications...</p>;
+      return (
+        <div className="text-center py-5">
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <p className="mt-3">Loading notifications...</p>
+        </div>
+      );
     }
     if (error) {
-      return <p style={{ color: 'red' }}>{error}</p>;
+      return (
+        <Alert variant="danger" className="text-center">
+          {error}
+        </Alert>
+      );
     }
     if (filteredEvents.length === 0) {
-      return <p>No event notifications found for this filter.</p>;
+      return (
+        <Alert variant="info" className="text-center">
+          No event notifications found for this filter.
+        </Alert>
+      );
     }
     return (
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
-        gap: 48,
-        justifyItems: 'center',
-        alignItems: 'start',
-        maxWidth: 1200,
-        margin: '0 auto',
-        paddingBottom: 40,
-      }}>
+      <Row className="g-4">
         {filteredEvents.map(event => {
           const alreadySignedUp = Array.isArray(event.attendees) && user && event.attendees.includes(user.uid);
           return (
-            <div key={event.id} style={{
-              background: event.bgColor || '#fff',
-              border: '1px solid #e0e0e0',
-              borderRadius: 20,
-              boxShadow: '0 4px 24px rgba(0,0,0,0.10)',
-              padding: 32,
-              width: 350,
-              minHeight: 440,
-              display: 'flex',
-              flexDirection: 'column',
-              fontFamily: 'Inter, Arial, sans-serif',
-              marginBottom: 0,
-              transition: 'box-shadow 0.2s, transform 0.2s',
-              position: 'relative',
-              overflow: 'hidden',
-              cursor: 'pointer',
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.boxShadow = '0 8px 32px rgba(0,0,0,0.16)';
-              e.currentTarget.style.transform = 'translateY(-4px) scale(1.02)';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.boxShadow = '0 4px 24px rgba(0,0,0,0.10)';
-              e.currentTarget.style.transform = 'none';
-            }}
-            >
-              <h3 style={{ fontSize: 24, fontWeight: 800, color: '#003B5C', marginBottom: 10, textAlign: 'center', letterSpacing: 0.5 }}>{event.eventName}</h3>
-              {event.bannerUrl && (
-                <img src={event.bannerUrl} alt="Event Banner" style={{ width: '100%', maxHeight: 160, objectFit: 'cover', borderRadius: 10, marginBottom: 16, border: '2px solid #FFD700', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }} />
-              )}
-              {Array.isArray(event.tags) && event.tags.length > 0 && (
-                <div style={{ marginBottom: 12, display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
-                  {event.tags.map((tag, idx) => (
-                    <span key={idx} style={{ background: '#e5f0ff', color: '#003B5C', borderRadius: 12, padding: '4px 12px', fontSize: 13, fontWeight: 600, letterSpacing: 0.2 }}>{tag}</span>
-                  ))}
-                </div>
-              )}
-              <div style={{ color: '#003B5C', fontWeight: 700, marginBottom: 6 }}>Hosted by: <span style={{ fontWeight: 400 }}>{event.clubName}</span></div>
-              <div style={{ marginBottom: 10 }}><span style={{ color: '#003B5C', fontWeight: 700 }}>Description:</span> {event.description}</div>
-              <div style={{ marginBottom: 6 }}>
-                <span style={{ color: '#003B5C', fontWeight: 700 }}>Date:</span> {event.date}
-              </div>
-              <div style={{ marginBottom: 6 }}>
-                <span style={{ color: '#003B5C', fontWeight: 700 }}>Start Time:</span> {event.startTime}
-              </div>
-              <div style={{ marginBottom: 6 }}>
-                <span style={{ color: '#003B5C', fontWeight: 700 }}>End Time:</span> {event.endTime}
-              </div>
-              <div style={{ marginBottom: 6 }}>
-                <span style={{ color: '#003B5C', fontWeight: 700 }}>Location:</span> {event.location}
-              </div>
-              {event.zoomLink && (
-                <div style={{ marginBottom: 6 }}>
-                  <span style={{ color: '#003B5C', fontWeight: 700 }}>Zoom Link:</span> <a href={event.zoomLink} target="_blank" rel="noopener noreferrer" style={{ color: '#003B5C', textDecoration: 'underline', wordBreak: 'break-all' }}>{event.zoomLink}</a>
-                </div>
-              )}
-              <div style={{ marginBottom: 6 }}>
-                <span style={{ color: '#003B5C', fontWeight: 700 }}>Who can attend:</span> {event.openTo === 'everyone' ? 'Everyone' : 'Club Members Only'}
-              </div>
-              {/* Sign up/Remove signup button */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (alreadySignedUp) {
-                    handleRemoveSignup(event.id);
-                  } else {
-                    handleSignUp(event.id);
-                  }
-                }}
-                style={{
-                  marginTop: 'auto',
-                  width: '100%',
-                  background: alreadySignedUp ? '#c00' : '#003B5C',
-                  color: '#FFD700',
-                  border: 'none',
-                  borderRadius: 8,
-                  padding: '12px 0',
-                  fontSize: 16,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-                  transition: 'background 0.2s, color 0.2s',
-                }}
+            <Col key={event.id} lg={4} md={6}>
+              <Card 
+                className="h-100 shadow-sm border-0" 
+                style={{ backgroundColor: event.bgColor || '#fff' }}
               >
-                {alreadySignedUp ? 'Remove Signup' : 'Sign Up for Event'}
-              </button>
-            </div>
+                <Card.Body className="p-4">
+                  <Card.Title className="text-center fw-bold text-primary mb-3">
+                    {event.eventName}
+                  </Card.Title>
+                  
+                  {event.bannerUrl && (
+                    <img 
+                      src={event.bannerUrl} 
+                      alt="Event Banner" 
+                      className="img-fluid rounded mb-3"
+                      style={{ maxHeight: '160px', objectFit: 'cover' }}
+                    />
+                  )}
+                  
+                  {Array.isArray(event.tags) && event.tags.length > 0 && (
+                    <div className="mb-3 text-center">
+                      {event.tags.map((tag, idx) => (
+                        <Badge 
+                          key={idx} 
+                          bg="light" 
+                          className="me-1 mb-1"
+                          style={{ color: '#003B5C' }}
+                        >
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                  
+                  <div className="mb-3">
+                    <strong>Hosted by:</strong> {event.clubName}
+                  </div>
+                  
+                  <div className="mb-3">
+                    <strong>Description:</strong> {event.description}
+                  </div>
+                  
+                  <div className="mb-2">
+                    <strong>Date:</strong> {event.date}
+                  </div>
+                  
+                  <div className="mb-2">
+                    <strong>Time:</strong> {event.startTime} - {event.endTime}
+                  </div>
+                  
+                  <div className="mb-2">
+                    <strong>Location:</strong> {event.location}
+                  </div>
+                  
+                  {event.zoomLink && (
+                    <div className="mb-2">
+                      <strong>Zoom Link:</strong> <a href={event.zoomLink} target="_blank" rel="noopener noreferrer" className="text-decoration-none">{event.zoomLink}</a>
+                    </div>
+                  )}
+                  
+                  <div className="mb-3">
+                    <strong>Who can attend:</strong> {event.openTo === 'everyone' ? 'Everyone' : 'Club Members Only'}
+                  </div>
+                  
+                  <Button
+                    variant={alreadySignedUp ? "outline-danger" : "primary"}
+                    className="w-100"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (alreadySignedUp) {
+                        handleRemoveSignup(event.id);
+                      } else {
+                        handleSignUp(event.id);
+                      }
+                    }}
+                  >
+                    {alreadySignedUp ? 'Remove Signup' : 'Sign Up for Event'}
+                  </Button>
+                </Card.Body>
+              </Card>
+            </Col>
           );
         })}
-      </div>
+      </Row>
     );
   };
 
   return (
-    <div style={{
-      background: 'linear-gradient(135deg, #f7f7fa 60%, #e5f0ff 100%)',
-      minHeight: '100vh',
-      fontFamily: 'Inter, Arial, sans-serif',
-    }}>
-      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000 }}>
-        <StudentNavigation />
-      </div>
-      <div style={{ paddingTop: 80, paddingLeft: 16, paddingRight: 16, maxWidth: 1400, margin: '0 auto' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', marginBottom: 24, gap: 0 }}>
-          <span style={{ color: '#003B5C', fontWeight: 500, fontSize: 20, opacity: 0.7, marginBottom: 8, marginLeft: 2 }}>Notifications</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
-            <div style={{ minWidth: 180 }}>
-              <label htmlFor="event-filter" style={{ color: '#003B5C', fontWeight: 700, marginRight: 8, fontSize: 18 }}>Filter:</label>
-              <select
-                id="event-filter"
+    <div className="min-vh-100" style={{ background: 'linear-gradient(135deg, #f7f7fa 60%, #e5f0ff 100%)' }}>
+      <StudentNavigation />
+      <Container className="py-4" style={{ marginTop: '80px' }}>
+        <Row className="mb-4">
+          <h2 className="text-primary fw-bold mb-3">Notifications</h2>
+          <div className="d-flex align-items-center gap-3">
+            <Form.Group className="mb-0">
+              <Form.Label className="fw-bold me-2">Filter:</Form.Label>
+              <Form.Select
                 value={filter}
                 onChange={e => setFilter(e.target.value)}
-                style={{ padding: '10px 18px', borderRadius: 10, border: '1.5px solid #003B5C', fontSize: 16, background: '#fff', color: '#003B5C', fontWeight: 600, outline: 'none', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}
+                style={{ minWidth: '180px' }}
               >
                 <option value="all">All events</option>
                 <option value="bytag">By tag</option>
-              </select>
-            </div>
+              </Form.Select>
+            </Form.Group>
           </div>
-        </div>
+        </Row>
         {renderEvents()}
-      </div>
+      </Container>
     </div>
   );
 }
